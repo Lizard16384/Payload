@@ -1,0 +1,14 @@
+[project]
+name = "payload"
+version = "0.1.0"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*.txt", "**/*.mcfunction"]
