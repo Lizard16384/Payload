@@ -140,18 +140,11 @@ class GroupName:
     
     def increment(self):
         self._id += 1
-    
-def read_file(file_name):
-    file = open(file_name)
-    file_lines = file.readlines()
-    file.close()
-    for i in range(len(file_lines)):
-        new = file_lines[i].strip()
-        if len(new) > 0 and new[0] == "#":
-            file_lines[i] = ""
-        else:
-            file_lines[i] = new
-    return file_lines
+
+class ParseData:
+    def __init__(self, type, data):
+        self.type = type
+        self.data = data
 
 
 
@@ -160,7 +153,7 @@ def split_by_actions(line):
     Takes a line and splits it up into a list separated with actions
     Thus, every other item in the new list is an action
 
-    It is rudimentary and very much breaks if you attempt to nest them
+    It is rudimentary and very much breaks if you attempt to nest them, but that's alright because there exists no nesting functionality yet
     """
     split_line = []
     action_index = 0
@@ -215,7 +208,7 @@ def process_n(name, groups):
         result_name = raw_name + str(groups[raw_name] + delta_n)
     return result_name
 
-def parse_actions(action,coordinates, groups):
+def parse_position_actions(action, coordinates, groups):
 
     # assumes already stripped $()
     operations = action.split(":")
@@ -248,7 +241,7 @@ def parse_actions(action,coordinates, groups):
     elif type == "~": # local N/S/E/W
         return coordinates[first].direction(coordinates[second])
 
-def parse_positions(file_lines):
+def read_positions(file_lines):
     positions = {}
     for line in file_lines:
         line = line.split(":")
@@ -257,17 +250,28 @@ def parse_positions(file_lines):
         positions[name] = Coord(coords[0], coords[1], coords[2])
     return positions
 
-def process_final(file_lines,coordinates,groups,raw_data):
-    final_string = ""
-    repeat = False
-    for line in file_lines:
+def parse_command(command_lines, parse_data):
+    positions = {}
+    raw_data = {}
+
+    for parse_add in parse_data:
+        if parse_add.type == "positions":
+            for key, value in parse_add.data.items():
+                positions[key] = value
+        elif parse_add.type == "raw_data":
+            for key, value in parse_add.data.items():
+                raw_data[key] = value
+
+    position_groups = {}
+    final_data = []
+    for line in command_lines:
         if len(line) == 0:
             continue
         if line[0] == "#":
             continue
 
         line = split_by_actions(line)
-        line_string = ""
+        line_data = ""
 
         for string in line:  # Process actions
             if len(string) == 0:
@@ -276,25 +280,32 @@ def process_final(file_lines,coordinates,groups,raw_data):
                 if string[1] == "#":
                     continue
                 elif string[1] == "~":
-                    string = raw_data[string[2:]]
+                    key = string[2:]
+                    if key in raw_data:
+                        string = raw_data[key]
+                    else:
+                        raise Exception("Command expects raw data to be inserted (prefix ~) but no raw data was provided!")
                 elif string[1] == "=":
                     aliases = string[2:].split(",")
-                    coordinates[aliases[1]] = coordinates[process_n(aliases[0],groups)]
+                    positions[aliases[1]] = positions[process_n(aliases[0],position_groups)]
                     string = ""
                 elif string[-5:] == "_next":
-                    string = parse_actions(f"{string[1:-5]}_n:~:{string[1:-5]}_n+1",coordinates,groups)
+                    string = parse_position_actions(f"{string[1:-5]}_n:~:{string[1:-5]}_n+1",positions,position_groups)
                 else:
-                    string = parse_actions(string[1:],coordinates,groups)
-            line_string = line_string + string
+                    string = parse_position_actions(string[1:],positions,position_groups)
+            line_data.append(string)
         
-        final_string = final_string + line_string
-    if not repeat:
-        return final_string
-    else:
-        return process_final([final_string],coordinates,groups)
+        final_data.append("".join(line_data))
+    return "".join(final_data)
 
-def parse_command(file_lines,position_lines,raw_data):
-    block_positions = parse_positions(position_lines)
-    groups = {}
-    final_cmd = process_final(file_lines,block_positions,groups,raw_data)
-    return final_cmd
+def get_parse_positions(position_lines):
+    positions = {}
+    for line in position_lines:
+        line = line.split(":")
+        name = line[0]
+        coords = line[1][1:-1].split(",")
+        positions[name] = Coord(coords[0], coords[1], coords[2])
+    return ParseData("positions", positions)
+
+def get_parse_raw_data(data):
+    return ParseData("raw_data", data)

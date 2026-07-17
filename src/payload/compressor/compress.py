@@ -576,7 +576,7 @@ def get_compressed_data(literals, rules, output, original_input, charset):
 
     return compressed_data
 
-def compile_command(input_str, raw_data):
+def compile_command(input_str):
     CUSTOM_BASE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-+= `~!@#$%^&*()[]{}|;:,.<>/?" # base-92: excludes ' " \ to avoid issues with minecraft /enchant handling.
                                                                                                                        # % can still be used in the base, but needs to be inserted as text after rule unpacking is done.
 
@@ -599,11 +599,13 @@ def compile_command(input_str, raw_data):
     literals, dict_string = dict_str(dictionary, charset)
     result = output_str(linked_list, charset)
 
-
+    raw_data = {"storage":"compressor","scoreboard":"compressor"}
     raw_data["snbt"] = get_compressed_data(literals, dict_string, result, input_str, charset)
 
     compressor_command_path = resources.files("payload.compressor").joinpath("compressor.mcfunction")
     compressor_positions_path = resources.files("payload.compressor").joinpath("positions.txt")
     compressor_lines = finish.read_file_lines(compressor_command_path)
     positions_lines = finish.read_file_lines(compressor_positions_path)
-    return parse.parse_command(compressor_lines,positions_lines,raw_data)
+
+    command = parse.parse_command(compressor_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(raw_data)])
+    return command

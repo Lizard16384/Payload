@@ -1,5 +1,7 @@
 import pyperclip
 
+from payload.compressor import compress
+
 class CommandLengthError(Exception):
     def __init__(self, value, message):
         self.value = value
@@ -22,7 +24,9 @@ def read_file_lines(file_name):
     file.close()
     return file_lines
 
-def finish(final, output, file_name = "result.txt"):
+def finish(raw_final, output, file_name = "result.txt"):
+    final = compress.compile_command(raw_final)
+
     if len(final) > 32500:
         raise CommandLengthError(len(final), f"Payload character length exceeds 32500! Command cannot be pasted in one command!")
     elif False:  # TODO: check byte length not to exceed 65536 and check behavior - maybe command can still be run, packet just can't be sent back to client.
