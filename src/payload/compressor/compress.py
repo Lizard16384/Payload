@@ -599,7 +599,7 @@ def compile_command(input_str):
     literals, dict_string = dict_str(dictionary, charset)
     result = output_str(linked_list, charset)
 
-    raw_data = {"storage":"compressor","scoreboard":"compressor"}
+    raw_data = {"storage":"c","scoreboard":"c"}
     raw_data["snbt"] = get_compressed_data(literals, dict_string, result, input_str, charset)
 
     compressor_command_path = resources.files("payload.compressor").joinpath("compressor.mcfunction")
