@@ -1,4 +1,5 @@
 import heapq
+import math
 import bisect
 
 class LinkedList():
@@ -283,7 +284,7 @@ def create_list_pairs(linked_list):
 
 
 '''
-Heap is an efficient way to track the most common pair given adding or removing pairs as needed
+Heap is an efficient way to track the most common pair given one added at each step and some others are changing a bunch.
 '''
 
 def push_pair(data, pair):
@@ -439,31 +440,24 @@ def assign_indexes(symbols):
 
 
 
-def linear_remap(num, operation, change_remap = [], remap_to = {}, remap_from = {}):
-    if change_remap:  # Editing default values of the function
-        i = 0
-        for group in change_remap:
-            for j in range(group[0], group[1] + 1):
-                remap_to[i] = j
-                i += 1
-        for key, value in remap_to.items():
-            remap_from[value] = key
-        return
-    
-    # operation True means the number is already in the range and is to be mapped back starting at 0
-    # operation false means the number is first being mapped into the range
-    if operation:  # remap number from within the range to raw values
-        return remap_from[num]
-    else:  # remap raw values to within the range
-        return remap_to[num]
+def int_to_base(n, charset):
+    base = len(charset)
+    if n == 0:
+        return charset[0]
+    digits = []
+    while n > 0:
+        digits.append(charset[n % base])
+        n //= base
+    return ''.join(reversed(digits)).rjust(2, charset[0])
 
-def custom_base(val):
-    if type(val) == int:
-        return chr(linear_remap(val, False))
-    elif type(val) == str:
-        return linear_remap(ord(val), True)
+def base_to_int(s, charset):
+    base = len(charset)
+    value = 0
+    for c in s:
+        value = value * base + charset.index(c)
+    return value
 
-def dict_str(dictionary):
+def dict_str(dictionary, charset):
     prev_length = 0
     literals = []
 
@@ -476,41 +470,46 @@ def dict_str(dictionary):
             literals.append(symbol._definition)
         else:
             if len(new) > prev_length:
-                string += custom_base(0) + custom_base(len(new))
+                string += "00" + str(int_to_base(len(new), charset))
                 prev_length = len(new)
             for num in new:
-                string += custom_base(num._index)
+                string += str(int_to_base(num._index, charset))
     return literals, string
 
-def output_str(linked_list):
+def output_str(linked_list, charset):
     string = ""
     for symbol in linked_list:
-        string += custom_base(symbol._index)
+        string += str(int_to_base(symbol._index, charset))
     return string
 
 
 
-def parse_rules_str(rule_str):
+
+
+
+def parse_rules_str(rule_str, charset):
     rules = []
     i = 0
     length = 0
     while i < len(rule_str):
-        if(custom_base(rule_str[i:i+1]) == 0):
-            length = custom_base(rule_str[i+1:i+2])
-            i += 2
+        if(base_to_int(rule_str[i:i+2], charset) == 0):
+            length = base_to_int(rule_str[i+2:i+4], charset)
+            i += 4
         rule = []
         for _ in range(length):
-            rule.append(custom_base(rule_str[i:i+1]))
-            i += 1
+            if i + 2 > len(rule_str):
+                raise ValueError(f"Unexpected end of rule_str at index {i}")
+            rule.append(base_to_int(rule_str[i:i+2], charset))
+            i += 2
         rules.append(rule)
     return rules
 
-def parse_output_str(output_str):
-    return [custom_base(output_str[i:i+1]) for i in range(0, len(output_str), 1)]
+def parse_output_str(output_str, charset):
+    return [base_to_int(output_str[i:i+2], charset) for i in range(0, len(output_str), 2)]
 
-def decode(literals, rule_str, output_str):
-    rules = parse_rules_str(rule_str)
-    output = parse_output_str(output_str)
+def decode(literals, rule_str, output_str, charset):
+    rules = parse_rules_str(rule_str, charset)
+    output = parse_output_str(output_str, charset)
 
     decodingOutput = output[:]
     outputStrings = []
@@ -530,8 +529,17 @@ def decode(literals, rule_str, output_str):
 
 
 
-def get_compressed_data(literals, rules, output, original_input, max_index):
-    base_cmd = f'base:"{"".join([chr(linear_remap(i, False)) for i in range(max_index)])}"'
+
+
+def get_compressed_data(literals, rules, output, original_input, charset):
+    base_definition = []
+    for i, char in enumerate(charset):
+        if char in "= `~!@#$%^&*()[]{}|;:,.<>/?":  # strings with quotes that cannot be omitted in an SNBT key
+            key = f'"{char}"'
+        else:  # remaining characters have flexibility in SNBT and you can omit the quotes that say it's a string for a slight optimization in characters used
+            key = char
+        base_definition.append(f"{key}:{i}")
+    base_cmd = "base:{amt:" + str(len(charset)) + ',' + ','.join(base_definition) + "}"
 
     literals_definition = []
     for char in literals:
@@ -549,7 +557,7 @@ def get_compressed_data(literals, rules, output, original_input, max_index):
             value = char
         literals_definition.append(value)
     literals_cmd = "literals:[\"\"," + ','.join(literals_definition) + "]"
-
+    
     compressed_data = base_cmd + "," + literals_cmd + ',rules:"' + rules + '",output:"' + output + '"'
 
     compressed_length = len(rules) + len(output)
@@ -557,15 +565,16 @@ def get_compressed_data(literals, rules, output, original_input, max_index):
     ratio = compressed_length / input_length if input_length > 0 else float('inf')
 
     print(f"Final compression: {ratio:.4f} ({compressed_length} compressed / {input_length} original)")
-    decoded = decode(literals, rules, output)
+    decoded = decode(literals, rules, output, charset)
     if decoded != original_input:
         raise RuntimeError("Decoded command does not match original input.")
 
     return compressed_data
-    
 
 def compress_data(input_str):
-    linear_remap(0,"",[[2048,65536]])  # Initialize default values in the function for desired ranges
+    CUSTOM_BASE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-+= `~!@#$%^&*()[]{}|;:,.<>/?" # base-92: excludes ' " \ to avoid issues with minecraft /enchant handling.
+                                                                                                                       # % can still be used in the base, but needs to be inserted as text after rule unpacking is done.
+
     dictionary = LinkedList()
     dict_lookup = {}
 
@@ -576,11 +585,13 @@ def compress_data(input_str):
 
     compress_pairs(linked_list, data, dictionary, dict_lookup)
     compress_dict(dictionary, dict_lookup)
-    dictionary.add_head(Symbol(""))  # Add one to everything so that 0 can be reserved for special properties
+    dictionary.add_head(Symbol(""))  # Add one to everything so that 00 can be reserved for special properties
     dictionary.sort()
     max_index = assign_indexes(dictionary)
     #dictionary.remove()
-    literals, dict_string = dict_str(dictionary)
-    result = output_str(linked_list)
+    base_needed = math.ceil(math.sqrt(max_index))
+    charset = CUSTOM_BASE_CHARS[0:base_needed + 1]
+    literals, dict_string = dict_str(dictionary, charset)
+    result = output_str(linked_list, charset)
 
-    return get_compressed_data(literals, dict_string, result, input_str, max_index)
+    return get_compressed_data(literals, dict_string, result, input_str, charset)
