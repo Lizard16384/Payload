@@ -271,7 +271,7 @@ def parse_command(command_lines, parse_data):
             continue
 
         line = split_by_actions(line)
-        line_data = ""
+        line_data = []
 
         for string in line:  # Process actions
             if len(string) == 0:
