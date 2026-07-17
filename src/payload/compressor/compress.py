@@ -2,6 +2,11 @@ import heapq
 import math
 import bisect
 
+from importlib import resources
+
+from payload.parser import parse
+from payload import finish
+
 class LinkedList():
 
     def __init__(self):
@@ -595,3 +600,10 @@ def compress_data(input_str):
     result = output_str(linked_list, charset)
 
     return get_compressed_data(literals, dict_string, result, input_str, charset)
+
+def compile_command(raw_data):
+    compressor_command_path = resources.files("payload.compressor").joinpath("compressor.mcfunction")
+    compressor_positions_path = resources.files("payload.compressor").joinpath("positions.txt")
+    compressor_lines = finish.read_file_lines(compressor_command_path)
+    positions_lines = finish.read_file_lines(compressor_positions_path)
+    return parse.parse_command(compressor_lines,positions_lines,raw_data)
