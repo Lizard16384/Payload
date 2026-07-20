@@ -220,9 +220,35 @@ def parse_command(command_lines, parse_data):
     position_groups = {}
     final_data = []
     for line in command_lines:
+        block_comment = False
+        comment_type = ""
         if len(line) == 0:
             continue
-        if line[0] == "#":
+        if line[0] == "#" or line[0:2] == "//":
+            continue
+        if not block_comment:
+            if line[0:4] == '"""':
+                block_comment = True
+                comment_type = '"""'
+                continue
+            if line[0:4] == "'''":
+                block_comment = True
+                comment_type = "'''"
+                continue
+            if line[0:3] == "/*":
+                block_comment = True
+                comment_type = "/*"
+                continue
+        if block_comment:
+            if line[0:4] == '"""':
+                block_comment = False
+                comment_type = ""
+            if line[0:4] == "'''":
+                block_comment = False
+                comment_type = ""
+            if line[0:3] == "*/":
+                block_comment = False
+                comment_type = ""
             continue
 
         line = split_by_actions(line)

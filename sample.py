@@ -2,6 +2,12 @@
 
 Uses several custom format implementations in order to automate some otherwise tedious interactions in all in one commands.
 
+
+Single-line comments can be done in either python (#) or c (//) style
+Multi-line commenst can be done in either python (three " or ') or c (/* then */) style
+Both comments currenty only support commenting if the comment is at the start of a line.
+
+
 Custom actions are embedded in a $(), unless the string "$(" is required unaffected for some reason, in which case escaping it with a backslash will ignore it.
 This is the same way datapack function macros handle runtime data insertion. After the fact, payload requires formatting to specify what to do with it
 
@@ -45,7 +51,7 @@ elsewhere to be inserted and interpreted as needed.
 
 Shorthand syntax to do same things mentioned above:
 
-1) $(Name__next) is shorthand for $(Name_n:~:Name_n+1) because it's pretty common to want
+1) $(Name_next) is shorthand for $(Name_n:~:Name_n+1) because it's pretty common to want
     to get the direction of the next in a group and this is more readable.
 
 2) $(Name) Nothing but a name is assumed to be retrieving the position, or, the same as $(:->:Name)
