@@ -54,7 +54,7 @@ Shorthand syntax to do same things mentioned above:
 1) $(Name_next) is shorthand for $(Name_n:~:Name_n+1) because it's pretty common to want
     to get the direction of the next in a group and this is more readable.
 
-2) $(Name) Nothing but a name is assumed to be retrieving the position, or, the same as $(:->:Name)
+2) $(Name) Nothing but a name is assumed to be retrieving the position offset from 0 0 0
 
 
 

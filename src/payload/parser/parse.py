@@ -180,6 +180,9 @@ def parse_position_actions(action, coordinates, groups):
     
     if first == second:
         raise ValueError("Both coordinates cannot be the same!")
+    
+    if first not in coordinates or second not in coordinates:
+        return "REPEAT"
 
     if type == "=": # Assign a coordinate
         coords = second.split()
@@ -205,9 +208,8 @@ def read_positions(file_lines):
         positions[name] = Coord(coords[0], coords[1], coords[2])
     return positions
 
-def parse_command(command_lines, parse_data):
-    positions = {}
-    raw_data = {}
+def parse_command(command_lines, parse_data, positions={}, raw_data={}):
+    repeat = False
 
     for parse_add in parse_data:
         if parse_add.type == "positions":
@@ -219,8 +221,8 @@ def parse_command(command_lines, parse_data):
 
     position_groups = {}
     final_data = []
+    block_comment = False
     for line in command_lines:
-        block_comment = False
         comment_type = ""
         if len(line) == 0:
             continue
@@ -251,10 +253,10 @@ def parse_command(command_lines, parse_data):
                 comment_type = ""
             continue
 
-        line = split_by_actions(line)
+        split_line = split_by_actions(line)
         line_data = []
 
-        for string in line:  # Process actions
+        for string in split_line:  # Process actions
             if len(string) == 0:
                 continue
             if string[0] == "$":
@@ -274,10 +276,18 @@ def parse_command(command_lines, parse_data):
                     string = parse_position_actions(f"{string[1:-5]}_n:~:{string[1:-5]}_n+1",positions,position_groups)
                 else:
                     string = parse_position_actions(string[1:],positions,position_groups)
-            line_data.append(string)
+            if string == "REPEAT":
+                repeat = True
+                line_data = [line]
+                break
+            else:
+                line_data.append(string)
         
         final_data.append("".join(line_data))
-    return "".join(final_data)
+    if repeat:
+        return parse_command(final_data, parse_data)
+    else:
+        return "".join(final_data)
 
 def get_parse_positions(position_lines):
     positions = {}
