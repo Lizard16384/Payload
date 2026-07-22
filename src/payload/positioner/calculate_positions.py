@@ -15,7 +15,6 @@ location for a node.
 """
 
 from ortools.sat.python import cp_model
-from payload.compressor.compress_neighbors import *
 from payload import finish
 
 """
