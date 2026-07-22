@@ -90,15 +90,15 @@ def get_all_names(data):
         names.append(single["name"])
     return names
 
-def get_new_solution(path):
+def get_new_solution(requirements, path):
     print("Previous (or nonexistent) positions no longer satisfy positional requirements. Calculating new positions.")
-    new_solution = calculate()
+    new_solution = calculate(requirements)
     print(f"New solution found. Writing to path. ({path})")
     path.write_text("\n".join(new_solution) + "\n")
     return new_solution
 
-def calculate(*path):
-    data, fixed_positions, conditionals, size, origin = return_data()
+def calculate(requirements, *path):
+    data, fixed_positions, conditionals, size, origin = requirements
 
     existing_solution = (finish.read_file_lines(path[0]) if path[0].exists() else None) if path else None
 
@@ -119,7 +119,7 @@ def calculate(*path):
         old_names.sort()
         new_names.sort()
     elif path:
-       return get_new_solution(path[0])
+       return get_new_solution(requirements, path[0])
 
     # Constraint programming engine
     model = cp_model.CpModel()
@@ -273,7 +273,7 @@ def calculate(*path):
     else:  # A solution is being tested, not generated
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             if old_names != new_names:  # Solution was valid but mismatched names were found, get a new solution
-                return get_new_solution(path[0])
+                return get_new_solution(requirements, path[0])
             return existing_solution  # Solution was valid without mismatched names
         else:
-            return get_new_solution(path[0])  # Solution was not valid, get a new solution
+            return get_new_solution(requirements, path[0])  # Solution was not valid, get a new solution

@@ -8,6 +8,7 @@ from pathlib import Path
 from payload.parser import parse
 from payload import finish
 from payload.positioner import calculate_positions
+from payload.compressor import compress_neighbors
 
 class LinkedList():
 
@@ -611,7 +612,8 @@ def compile_command(input_str):
     compressor_lines = finish.read_file_lines(compressor_command_path)
 
     path = resources.files("payload.compressor") / "positions.txt"
-    positions_lines = calculate_positions.calculate(path)  # Verify validity of position arrangement or update for a new arrangement if requirements have changed
+    requirements = compress_neighbors.return_data()
+    positions_lines = calculate_positions.calculate(requirements, path)  # Verify validity of position arrangement or update for a new arrangement if requirements have changed
 
     command = parse.parse_command(compressor_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(raw_data)])
     return command
