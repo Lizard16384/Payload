@@ -572,6 +572,7 @@ def get_compressed_data(literals, rules, output, original_input, charset):
     ratio = compressed_length / input_length if input_length > 0 else float('inf')
 
     print(f"Final compression: {ratio:.4f} ({compressed_length} compressed / {input_length} original)")
+    print("Verifying integrity of command.")
     decoded = decode(literals, rules, output, charset)
     if decoded != original_input:
         raise RuntimeError("Decoded command does not match original input.")
@@ -603,6 +604,8 @@ def compile_command(input_str):
 
     raw_data = {"storage":"compressor","scoreboard":"compressor"}
     raw_data["snbt"] = get_compressed_data(literals, dict_string, result, input_str, charset)
+
+    print("Command compressed. Parsing into compressor command...")
 
     compressor_command_path = resources.files("payload.compressor").joinpath("compressor.mcfunction")
     compressor_lines = finish.read_file_lines(compressor_command_path)

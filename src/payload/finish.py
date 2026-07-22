@@ -32,6 +32,7 @@ def finish(raw_final, output, file_name = "result.txt"):
     elif False:  # TODO: check byte length not to exceed 65536 and check behavior - maybe command can still be run, packet just can't be sent back to client.
         raise CommandWireError(len(final), f"Payload byte length exceeds 65536! Command cannot be sent to server in one command!")
     else:
+        print("Payload successfully compiled command.")
         print(f"Payload: {((len(final)/32500) * 100):.2f}%, {len(final)} used of 32500")
     
     if "clipboard" in output:
