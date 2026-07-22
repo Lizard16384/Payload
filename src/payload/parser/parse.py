@@ -318,6 +318,8 @@ def answer_action(action, parser):
 def get_parse_positions(position_lines):
     positions = {}
     for line in position_lines:
+        if not line:
+            continue
         line = line.split(":")
         name = line[0]
         coords = line[1][1:-1].split(",")
