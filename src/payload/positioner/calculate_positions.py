@@ -98,6 +98,14 @@ def get_new_solution(requirements, path):
 
 def calculate(requirements, *path):
     data, fixed_positions, conditionals, size, origin = requirements
+    locked_fixed_positions = {}
+    for key, value in fixed_positions.items():
+        locked_fixed_positions[key] = value
+    original_requirements = data, locked_fixed_positions, conditionals, size, origin
+    size_x = size["x"]
+    size_y = size["y"]
+    size_z = size["z"]
+    dims = [size_x, size_y, size_z]
 
     existing_solution = (finish.read_file_lines(path[0]) if path[0].exists() else None) if path else None
 
@@ -112,22 +120,24 @@ def calculate(requirements, *path):
             line = line.split(":")
             name = line[0]
             coords = line[1][1:-1].split(",")
-            fixed_positions[name] = [int(coords[0]) + origin[0], int(coords[1]) + origin[0], int(coords[2]) + origin[0]]
+            raw_coords = [int(coords[0]) + origin[0], int(coords[1]) + origin[1], int(coords[2]) + origin[2]]
+            fixed_positions[name] = raw_coords
             new_names.append(name)
+
+            if raw_coords[0] < 0 or raw_coords[0] > dims[0] \
+                or raw_coords[1] < 0 or raw_coords[1] > dims[1] \
+                or raw_coords[2] < 0 or raw_coords[2] > dims[2]:
+                return get_new_solution(original_requirements, path[0])
 
         old_names.sort()
         new_names.sort()
     elif path:
-       return get_new_solution(requirements, path[0])
+       return get_new_solution(original_requirements, path[0])
 
     # Constraint programming engine
     model = cp_model.CpModel()
 
 
-    size_x = size["x"]
-    size_y = size["y"]
-    size_z = size["z"]
-    dims = [size_x, size_y, size_z]
     
     positions = {}  # Name of each variable the model tracks, one for x y and z
     relative_dist = {}
@@ -272,7 +282,7 @@ def calculate(requirements, *path):
     else:  # A solution is being tested, not generated
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             if old_names != new_names:  # Solution was valid but mismatched names were found, get a new solution
-                return get_new_solution(requirements, path[0])
+                return get_new_solution(original_requirements, path[0])
             return existing_solution  # Solution was valid without mismatched names
         else:
-            return get_new_solution(requirements, path[0])  # Solution was not valid, get a new solution
+            return get_new_solution(original_requirements, path[0])  # Solution was not valid, get a new solution
