@@ -60,7 +60,7 @@ summon armor_stand ~ ~ ~ {CustomName:'Command is currently being decompressed. T
 ['$(setup5:->:+final_n)',$(final_next),'execute store result block $(final_n:->:aio) auto int 1 run data modify block $(final_n:->:aio) Command set from storage $(~storage) main.command'],
 ['$(setup5:->:+final_n)',$(final_next),'data remove storage $(~storage) main'],
 ['$(setup5:->:+final_n)',$(final_next),'scoreboard objectives remove $(~scoreboard)'],
-['$(setup5:->:+final_n)',$(final_n:~:end),'fill $(final_n:->:corner1) $(final_n:->:corner2) air replace chain_command_block']
+['$(setup5:->:+final_n)',$(final_n:~:end),'fill $(final_n:->:corner---) $(final_n:->:corner+++) air replace chain_command_block']
 ]}},{id:command_block_minecart,Command:"
 
 data modify entity 4d616465-2062-7920-4c69-7a6172643136 data set from entity @n[tag=thedata] data"},{id:command_block_minecart,Command:"
