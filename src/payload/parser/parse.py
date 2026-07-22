@@ -1,5 +1,8 @@
 class Coord:
     def __init__(self, x, y, z):
+        self.update(x, y, z)
+
+    def update(self, x, y, z):
         self._x = self.establish(x)
         self._y = self.establish(y)
         self._z = self.establish(z)
@@ -12,7 +15,9 @@ class Coord:
         """
         if isinstance(value, float):
             return value
-        if not isinstance(value, str):
+        elif isinstance(value, int):
+            return float(value)
+        elif not isinstance(value, str):
             raise ValueError('Coordinate given is not a string or float!')
         
         number = 0
@@ -101,6 +106,108 @@ class ParseData:
         self.type = type
         self.data = data
 
+class Parser:
+    def __init__(self, action_data):
+        self.parsing = []
+        self.coordinates = {}
+        self.origin = Coord(0,0,0)
+        self.raw_data = {}
+        for new in action_data:
+            if new.type == "positions":
+                for key, value in new.data.items():
+                    self.coordinates[key] = value
+            elif new.type == "raw_data":
+                for key, value in new.data.items():
+                    self.raw_data[key] = value
+
+        self.n_groups = {}
+        self.aliases = {}
+
+    def add_string(self, string):
+        self.parsing.append(string)
+
+    def add_raw_data(self, name):
+        self.parsing.append(self.raw_data[name])
+
+    def add_alias(self, original, alias):
+        self.coordinates[self.process_n(alias)] = self.coordinates[self.process_n(original)]
+
+    def add_relative_offset(self, name1, name2):
+        self.parsing.append(Action("pos", self.process_n(name1), self.process_n(name2)))
+
+    def add_relative_direction(self, name1, name2):
+        self.parsing.append(Action("dir", self.process_n(name1), self.process_n(name2)))
+
+    def update_coord(self, name, coordinates):
+        name = self.process_n(name)
+        if name not in self.coordinates:
+            self.coordinates[name] = Coord(coordinates[0], coordinates[1], coordinates[2])
+        else:
+            self.coordinates[name].update(coordinates[0], coordinates[1], coordinates[2])
+
+    def get_answer(self, action):
+        if action.type == "pos":
+            if not action.name1: # From 0 0 0
+                answer = str(self.coordinates[action.name2])
+            elif not action.name2: # To 0 0 0
+                answer = str(self.coordinates[action.name1] * -1)
+            else:
+                answer = str(self.coordinates[action.name2] - self.coordinates[action.name1])
+        elif action.type == "dir":
+            answer = self.coordinates[action.name1].direction(self.coordinates[action.name2])
+        return answer
+
+    def process_n(self, name):
+        if not name:
+            return
+        def parse_n(name):
+            raw_name, is_n, incr, delta_n = "", False, 0, 0
+
+            pos_of_n = name.rfind("_n")
+            if pos_of_n != len(name) - 2 and name[pos_of_n + 2] not in "+-":
+                return name, is_n, incr, delta_n
+            
+            is_n = True
+            if name[0] == "+":
+                amt = name.rfind("+")
+                raw_name = name[amt + 1:pos_of_n]
+                incr = amt + 1
+            else:
+                raw_name = name[:pos_of_n]
+            
+            delta_str = name[pos_of_n + 2:]
+            if len(delta_str) >= 1:
+                if delta_str[0] == "+":
+                    delta_n = int(delta_str[1:])
+                else:
+                    delta_n = int(delta_str)
+
+            return raw_name, is_n, incr, delta_n
+        
+        raw_name, is_n, incr, delta_n = parse_n(name)
+        result_name = raw_name
+        if is_n:
+            if raw_name not in self.n_groups:
+                self.n_groups[raw_name] = 0
+            self.n_groups[raw_name] += incr
+            result_name = raw_name + str(self.n_groups[raw_name] + delta_n)
+        return result_name
+
+    def final(self):
+        final = ""
+        for item in self.parsing:
+            if type(item) == str:
+                final += item
+            elif type(item) == Action:
+                final += self.get_answer(item)
+        return final
+
+class Action:
+    def __init__(self, type, name1, name2):
+        self.type = type
+        self.name1 = name1
+        self.name2 = name2
+
 
 
 def split_by_actions(line):
@@ -129,98 +236,10 @@ def split_by_actions(line):
     split_line.append(line[action_end:])
     return split_line
 
-def process_n(name, groups):
-    def parse_n(name):
-        raw_name, is_n, incr, delta_n = "", False, 0, 0
 
-        pos_of_n = name.rfind("_n")
-        if pos_of_n != len(name) - 2 and name[pos_of_n + 2] not in "+-":
-            return name, is_n, incr, delta_n
-        
-        is_n = True
-        if name[0] == "+":
-            amt = name.rfind("+")
-            raw_name = name[amt + 1:pos_of_n]
-            incr = amt + 1
-        else:
-            raw_name = name[:pos_of_n]
-        
-        delta_str = name[pos_of_n + 2:]
-        if len(delta_str) >= 1:
-            if delta_str[0] == "+":
-                delta_n = int(delta_str[1:])
-            else:
-                delta_n = int(delta_str)
 
-        return raw_name, is_n, incr, delta_n
-    
-    raw_name, is_n, incr, delta_n = parse_n(name)
-    result_name = raw_name
-    if is_n:
-        if raw_name not in groups:
-            groups[raw_name] = 0
-        groups[raw_name] += incr
-        result_name = raw_name + str(groups[raw_name] + delta_n)
-    return result_name
-
-def parse_position_actions(action, coordinates, groups):
-
-    # assumes already stripped $()
-    operations = action.split(":")
-
-    if len(operations) == 1: # Special case of get position from 0 0 0
-        return str(coordinates[process_n(action, groups)])
-
-    first = operations[0]
-    second = operations[2]
-    type = operations[1]
-
-    first = process_n(first, groups)
-    second = process_n(second, groups)
-    
-    if first == second:
-        raise ValueError("Both coordinates cannot be the same!")
-    
-    if first not in coordinates or second not in coordinates:
-        return "REPEAT"
-
-    if type == "=": # Assign a coordinate
-        coords = second.split()
-        coordinates[first] = Coord(coords[0], coords[1], coords[2])
-        return ""
-    
-    elif type == "->": # from-to local coordinate difference
-        if first == "": # From 0 0 0
-            return str(coordinates[second])
-        elif second == "": # To 0 0 0
-            return str(coordinates[first] * -1)
-        return str(coordinates[second] - coordinates[first])
-        
-    elif type == "~": # local N/S/E/W
-        return coordinates[first].direction(coordinates[second])
-
-def read_positions(file_lines):
-    positions = {}
-    for line in file_lines:
-        line = line.split(":")
-        name = line[0]
-        coords = line[1][1:-1].split(",")
-        positions[name] = Coord(coords[0], coords[1], coords[2])
-    return positions
-
-def parse_command(command_lines, parse_data, positions={}, raw_data={}):
-    repeat = False
-
-    for parse_add in parse_data:
-        if parse_add.type == "positions":
-            for key, value in parse_add.data.items():
-                positions[key] = value
-        elif parse_add.type == "raw_data":
-            for key, value in parse_add.data.items():
-                raw_data[key] = value
-
-    position_groups = {}
-    final_data = []
+def parse_command(command_lines, parse_data):
+    parser = Parser(parse_data)
     block_comment = False
     for line in command_lines:
         comment_type = ""
@@ -254,40 +273,47 @@ def parse_command(command_lines, parse_data, positions={}, raw_data={}):
             continue
 
         split_line = split_by_actions(line)
-        line_data = []
 
         for string in split_line:  # Process actions
             if len(string) == 0:
                 continue
             if string[0] == "$":
-                if string[1] == "#":
-                    continue
-                elif string[1] == "~":
-                    key = string[2:]
-                    if key in raw_data:
-                        string = raw_data[key]
-                    else:
-                        raise Exception("Command expects raw data to be inserted (prefix ~) but no raw data was provided!")
-                elif string[1] == "=":
-                    aliases = string[2:].split(",")
-                    positions[aliases[1]] = positions[process_n(aliases[0],position_groups)]
-                    string = ""
-                elif string[-5:] == "_next":
-                    string = parse_position_actions(f"{string[1:-5]}_n:~:{string[1:-5]}_n+1",positions,position_groups)
-                else:
-                    string = parse_position_actions(string[1:],positions,position_groups)
-            if string == "REPEAT":
-                repeat = True
-                line_data = [line]
-                break
+                answer_action(string[1:], parser)
             else:
-                line_data.append(string)
-        
-        final_data.append("".join(line_data))
-    if repeat:
-        return parse_command(final_data, parse_data)
-    else:
-        return "".join(final_data)
+                parser.add_string(string)
+
+    return parser.final()
+
+def answer_action(action, parser):
+    if action[0] == "#":
+        pass
+        return
+    elif action[0] == "~":
+        parser.add_raw_data(action[1:])
+        return
+    elif action[0] == "=":
+        names = action[1:].split(",")
+        parser.add_alias(names[0], names[1])
+        return
+    if action[-5:] == "_next":
+        action = f"{action[:-5]}_n:~:{action[:-5]}_n+1"
+
+    # Remaining actions are
+    operations = action.split(":")
+    if len(operations) == 1: # Special case of get position from 0 0 0
+        parser.add_relative_offset(None, operations[0])
+        return
+
+    first = operations[0]
+    second = operations[2]
+    type = operations[1]
+
+    if type == "=": # Assign a coordinate
+        parser.update_coord(first, second.split(","))
+    elif type == "->": # from-to local coordinate difference
+        parser.add_relative_offset(first, second)
+    elif type == "~": # local N/S/E/W/U/D
+        parser.add_relative_direction(first, second)
 
 def get_parse_positions(position_lines):
     positions = {}
