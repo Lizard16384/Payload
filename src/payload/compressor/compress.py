@@ -3,9 +3,11 @@ import math
 import bisect
 
 from importlib import resources
+from pathlib import Path
 
 from payload.parser import parse
 from payload import finish
+from payload.positioner import calculate_positions
 
 class LinkedList():
 
@@ -603,9 +605,10 @@ def compile_command(input_str):
     raw_data["snbt"] = get_compressed_data(literals, dict_string, result, input_str, charset)
 
     compressor_command_path = resources.files("payload.compressor").joinpath("compressor.mcfunction")
-    compressor_positions_path = resources.files("payload.compressor").joinpath("positions.txt")
     compressor_lines = finish.read_file_lines(compressor_command_path)
-    positions_lines = finish.read_file_lines(compressor_positions_path)
+
+    path = resources.files("payload.compressor") / "positions.txt"
+    positions_lines = calculate_positions.calculate(path)  # Verify validity of position arrangement or update for a new arrangement if requirements have changed
 
     command = parse.parse_command(compressor_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(raw_data)])
     return command

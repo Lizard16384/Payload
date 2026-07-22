@@ -16,6 +16,7 @@ location for a node.
 
 from ortools.sat.python import cp_model
 from payload.compressor.compress_neighbors import *
+from payload import finish
 
 """
 Calculating if a layout is possible by limitation of amount of blocks allocated to get from one place to another.
@@ -80,9 +81,45 @@ def new_block(model, group, name, size, dims, positions, fixed_positions, inters
                 intersection_groups[id] = []
             intersection_groups[id].append(new_pos)
 
-def calculate():
+def get_all_names(data):
+    names = []
+    for group in data["groups"]:
+        for i in range(1, group["amount"] + 1):
+            names.append(f"{group["name"]}{i}")
+    for single in data["individual"]:
+        names.append(single["name"])
+    return names
 
+def get_new_solution(path):
+    print("Previous (or nonexistent) positions no longer satisfy positional requirements. Calculating new positions.")
+    new_solution = calculate()
+    print(f"New solution found. Writing to path. ({path})")
+    path.write_text("\n".join(new_solution) + "\n")
+    return new_solution
+
+def calculate(*path):
     data, fixed_positions, conditionals, size, origin = return_data()
+
+    existing_solution = (finish.read_file_lines(path[0]) if path[0].exists() else None) if path else None
+
+    if existing_solution is not None:
+        old_names = get_all_names(data)
+        new_names = []
+
+        for line in existing_solution:
+            axes = set("+-")
+            if line[0:6] == "corner" and set(line[6:9]).issubset(axes):
+                continue
+            line = line.split(":")
+            name = line[0]
+            coords = line[1][1:-1].split(",")
+            fixed_positions[name] = [int(coords[0]) + origin[0], int(coords[1]) + origin[0], int(coords[2]) + origin[0]]
+            new_names.append(name)
+
+        old_names.sort()
+        new_names.sort()
+    elif path:
+       return get_new_solution(path[0])
 
     # Constraint programming engine
     model = cp_model.CpModel()
@@ -189,43 +226,54 @@ def calculate():
         model.add(dy == offset["offset"][1])
         model.add(dz == offset["offset"][2])
 
-    # Creates a solver and solves the model.
     solver = cp_model.CpSolver()
-    
-    # Solve.
     status = solver.solve(model)
-    
-    # Statistics.
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        #print("\nStatistics")
-        #print(f"  status   : {solver.status_name(status)}")
-        #print(f"  conflicts: {solver.num_conflicts}")
-        #print(f"  branches : {solver.num_branches}")
-        #print(f"  wall time: {solver.wall_time} s")
-        #print("Values (wrote to file positions.txt):")
-        result = {}
-        output_lines = []
-        print(positions)
-        for key, value in positions.items():
-            coord = [key[0:-2],key[-1]]
-            if coord[0] not in result:
-                result[coord[0]] = {}
-            result[coord[0]][coord[1]] = value
-        for key, value in result.items():
-            coord = f"{key}:({solver.value(value["x"]) - origin[0]},{solver.value(value["y"]) - origin[1]},{solver.value(value["z"]) - origin[2]})"
-            output_lines.append(coord)
-        
-        # write corners in
-        for x in [0,dims[0] - 1]:
-            for y in [0,dims[1] - 1]:
-                for z in [0,dims[2] - 1]:
-                    name = ("+" if x else "-") \
-                        + ("+" if y else "-") \
-                        + ("+" if z else "-")
-                    coord = f"{name}:({x - origin[0]},{y - origin[1]},{z - origin[2]})"
-                    output_lines.append(coord)
 
-    else:
-        raise Exception("No solution found for position requirements given.")
-    
-    return output_lines
+    if existing_solution is None:
+        # Statistics.
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+            """
+            print("\nStatistics")
+            print(f"  status   : {solver.status_name(status)}")
+            print(f"  conflicts: {solver.num_conflicts}")
+            print(f"  branches : {solver.num_branches}")
+            print(f"  wall time: {solver.wall_time} s")
+            print("Values (wrote to file positions.txt):")
+            """
+            result = {}
+            output_lines = []
+            for key, value in positions.items():
+                coord = [key[0:-2],key[-1]]
+                if coord[0] not in result:
+                    result[coord[0]] = {}
+                result[coord[0]][coord[1]] = value
+            for key, value in result.items():
+                coord = f"{key}:({solver.value(value["x"]) - origin[0]},{solver.value(value["y"]) - origin[1]},{solver.value(value["z"]) - origin[2]})"
+                output_lines.append(coord)
+            
+            # write corners in
+            output_lines.append("")
+            for x in [0,dims[0] - 1]:
+                for y in [0,dims[1] - 1]:
+                    for z in [0,dims[2] - 1]:
+                        corner = ("+" if x else "-") \
+                            + ("+" if y else "-") \
+                            + ("+" if z else "-")
+                        name = "corner" + corner
+                        coord = f"{name}:({x - origin[0]},{y - origin[1]},{z - origin[2]})"
+                        output_lines.append(coord)
+
+        else:  # No solution was possible with new requirements
+            raise Exception(
+                f"No solution found for requirements given."
+                f"Cannot write a new default solution for changed requirements."
+            )
+
+        return output_lines
+    else:  # A solution is being tested, not generated
+        if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+            if old_names != new_names:  # Solution was valid but mismatched names were found, get a new solution
+                return get_new_solution(path[0])
+            return existing_solution  # Solution was valid without mismatched names
+        else:
+            return get_new_solution(path[0])  # Solution was not valid, get a new solution
