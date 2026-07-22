@@ -1,7 +1,7 @@
 def return_data():
     # Restrictions
     data = {"groups":[
-                {"name":"minecart","amount":2,"start":[],"end":[]},
+                {"name":"minecart","amount":2,"start":[],"end":[],"intersect":1},
                 {"name":"init","amount":1,"start":["setup2"],"end":[]}, # e
                 {"name":"rule","amount":11,"start":["init1"],"end":["rule1"]}, # o e e o e o e o e o e
                 {"name":"out","amount":3,"start":[],"end":[]}, # o e e
@@ -9,7 +9,7 @@ def return_data():
                 {"name":"ench","amount":4,"start":[],"end":[]}, # e o e o
                 #{"name":"result","amount":3,"start":[],"end":[]}, # e o o e o e o
                 {"name":"final","amount":7,"start":[],"end":["end"]}, # e
-                {"name":"setup","amount":7,"start":[],"end":["setup2"]}
+                {"name":"setup","amount":7,"start":[],"end":["setup2"],"intersect":[0,1]}
             ],
             "extra_connections":[
                 ["rule2","num1"],["rule2","out1"],["rule5","rule1"],["rule9","num1"],
@@ -34,13 +34,7 @@ def return_data():
                 ]
             ,"offsets":[
                 {"from":"aio","to":"minecart1","offset":[0,1,0]},
-                {"from":"minecart1","to":"minecart2","offset":[0,1,0]},
-            ],
-            "no_fill_space":[
-                "minecart1","minecart2"
-            ],
-            "extra_no_intersect":[
-                ["minecart1","minecart2","setup1","setup2","setup3","setup4","setup5","setup6","setup7"]
+                {"from":"minecart1","to":"minecart2","offset":[0,1,0]}
             ]
             } # e
 

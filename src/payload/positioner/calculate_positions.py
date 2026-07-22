@@ -15,7 +15,27 @@ location for a node.
 """
 
 from ortools.sat.python import cp_model
-from layouts.compressor import *
+from payload.compressor.compress_neighbors import *
+
+"""
+Calculating if a layout is possible by limitation of amount of blocks allocated to get from one place to another.
+def calculate_extras(data):
+    # assumes one place that does not have a fixed starting point, or if it does, it's not fixed next to a different block
+    evens = []
+    odds = []
+    even = None
+    for group in data["groups"]:
+        if not group["start"]:
+            even = True
+        else:
+            even = group["start"][0] in odds
+        for i in range(len(group["amount"])):
+            if even:
+                evens.append(group["name"] + str(i + 1))
+            else:
+                odds.append(group["name"] + str(i + 1))
+            even = not even
+"""
 
 def add_neighbor(model, variables, dims, name1, name2):
     x1 = variables[name1 + "_x"]
@@ -34,25 +54,7 @@ def add_neighbor(model, variables, dims, name1, name2):
     model.add(dx + dy + dz == 1)
     return [dx, dy, dz]
 
-def calculate_extras(data):
-    # assumes one place that does not have a fixed starting point, or if it does, it's not fixed next to a different block
-    evens = []
-    odds = []
-    even = None
-    for group in data["groups"]:
-        if not group["start"]:
-            even = True
-        else:
-            even = group["start"][0] in odds
-        for i in range(len(group["amount"])):
-            if even:
-                evens.append(group["name"] + str(i + 1))
-            else:
-                odds.append(group["name"] + str(i + 1))
-            even = not even
-        
-
-def new_block(model, name, size, dims, positions, fixed_positions):
+def new_block(model, group, name, size, dims, positions, fixed_positions, intersection_groups):
     for dim, length in size.items():
         if name in fixed_positions:
             j = 0
@@ -67,10 +69,18 @@ def new_block(model, name, size, dims, positions, fixed_positions):
         int_var = model.new_int_var(0, length - 1, coord)
         positions[coord] = int_var
     
-    return (positions[name + "_x"] * dims[1] + positions[name + "_y"]) * dims[2] + positions[name + "_z"]
+    new_pos = (positions[name + "_x"] * dims[1] + positions[name + "_y"]) * dims[2] + positions[name + "_z"]
+    if "intersect" not in group:
+        intersection_groups["0"].append(new_pos)
+    else:
+        new_ids = group["intersect"] if type(group["intersect"]) == list else [group["intersect"]]
+        for intersect_id in new_ids:
+            id = str(intersect_id)
+            if id not in intersection_groups:
+                intersection_groups[id] = []
+            intersection_groups[id].append(new_pos)
 
-
-def main() -> None:
+def calculate():
 
     data, fixed_positions, conditionals, size, origin = return_data()
 
@@ -83,38 +93,26 @@ def main() -> None:
     size_z = size["z"]
     dims = [size_x, size_y, size_z]
     
-    positions = {}
-    positions_ids = []
-    all_positions_ids = {}
+    positions = {}  # Name of each variable the model tracks, one for x y and z
     relative_dist = {}
+    intersection_groups = {"0":[]}
 
     # Assign everything an x y and z variable
     # Then create a value unique to its position in the grid
     for group in data["groups"]:
         for i in range(1, group["amount"] + 1):
             name = f"{group["name"]}{i}"
-            new_pos = new_block(model, name, size, dims, positions, fixed_positions)
-            if name not in data["no_fill_space"]:
-                positions_ids.append(new_pos)
-            all_positions_ids[name] = new_pos
-    
+            new_block(model, group, name, size, dims, positions, fixed_positions, intersection_groups)
+
     for single in data["individual"]:
         name = single["name"]
-        new_pos = new_block(model, name, size, dims, positions, fixed_positions)
-        if name not in data["no_fill_space"]:
-            positions_ids.append(new_pos)
-        all_positions_ids[name] = new_pos
+        new_block(model, group, name, size, dims, positions, fixed_positions, intersection_groups)
 
-    
-    # Ensure no overlap between objects that aren't said to not fill space
-    model.add_all_different(positions_ids)
 
-    # add other non-overlaps that are manually specified
-    for intersection_group in data["extra_no_intersect"]:
-        new_positions_ids = []
-        for name in intersection_group:
-            new_positions_ids.append(all_positions_ids[name])
-        model.add_all_different(new_positions_ids)
+
+    # Prevent overlap from everything within specified groups, including a default main group
+    for group in intersection_groups.values():
+        model.add_all_different(group)
 
 
 
@@ -199,79 +197,35 @@ def main() -> None:
     
     # Statistics.
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-        print("\nStatistics")
-        print(f"  status   : {solver.status_name(status)}")
-        print(f"  conflicts: {solver.num_conflicts}")
-        print(f"  branches : {solver.num_branches}")
-        print(f"  wall time: {solver.wall_time} s")
-        print("Values (wrote to file positions.txt):")
+        #print("\nStatistics")
+        #print(f"  status   : {solver.status_name(status)}")
+        #print(f"  conflicts: {solver.num_conflicts}")
+        #print(f"  branches : {solver.num_branches}")
+        #print(f"  wall time: {solver.wall_time} s")
+        #print("Values (wrote to file positions.txt):")
         result = {}
+        output_lines = []
+        print(positions)
         for key, value in positions.items():
             coord = [key[0:-2],key[-1]]
             if coord[0] not in result:
                 result[coord[0]] = {}
             result[coord[0]][coord[1]] = value
-        file_name = "positions.txt"
-        file = open(file_name, "w")
         for key, value in result.items():
             coord = f"{key}:({solver.value(value["x"]) - origin[0]},{solver.value(value["y"]) - origin[1]},{solver.value(value["z"]) - origin[2]})"
-            print(coord)
-            file.write(coord + "\n")
-        file.close()
+            output_lines.append(coord)
+        
+        # write corners in
+        for x in [0,dims[0] - 1]:
+            for y in [0,dims[1] - 1]:
+                for z in [0,dims[2] - 1]:
+                    name = ("+" if x else "-") \
+                        + ("+" if y else "-") \
+                        + ("+" if z else "-")
+                    coord = f"{name}:({x - origin[0]},{y - origin[1]},{z - origin[2]})"
+                    output_lines.append(coord)
+
     else:
-        print("No solution found.")
-
-"""
-add to positions.txt after:
-corner1:(-2,-2,-2)
-corner2:(2,1,2)
-"""
-
-if __name__ == "__main__":
-    main()
-
-
-"""
-TEST CODE FOR OPTIMIZATION THAT MAY OR MAY NOT WORK:
-
-def add_manhattan_neighbor_constraint(model, x1, y1, z1, x2, y2, z2, edge_var, M=100):
-    '''
-    Adds a constraint that (x2,y2,z2) is a Manhattan neighbor of (x1,y1,z1)
-    only if edge_var is True. Uses the Big M method to avoid AddAbsEquality.
-    '''
-    # Create boolean variables for the sign of the difference on each axis
-    dx_pos = model.NewBoolVar('dx_pos')
-    dy_pos = model.NewBoolVar('dy_pos')
-    dz_pos = model.NewBoolVar('dz_pos')
-
-    # Use 'edge_var' as an enabler with Big M
-    # If edge_var is 0 (no edge), the constraints are inactive.
-    # If edge_var is 1 (edge exists), the following must hold:
+        raise Exception("No solution found for position requirements given.")
     
-    # |x1-x2| + |y1-y2| + |z1-z2| == 1
-    # This is broken down by the sign variables.
-    
-    # Sum of absolute differences must be 1 if edge exists
-    model.Add((x1 - x2) + (y1 - y2) + (z1 - z2) - 2*(dx_pos*(x1-x2) + dy_pos*(y1-y2) + dz_pos*(z1-z2)) == 1).OnlyEnforceIf(edge_var)
-    
-    # Link sign variables to the actual differences (Big M constraints)
-    model.Add(x1 - x2 >= 0).OnlyEnforceIf(dx_pos)
-    model.Add(x1 - x2 < 0).OnlyEnforceIf(dx_pos.Not())
-    model.Add(y1 - y2 >= 0).OnlyEnforceIf(dy_pos)
-    model.Add(y1 - y2 < 0).OnlyEnforceIf(dy_pos.Not())
-    model.Add(z1 - z2 >= 0).OnlyEnforceIf(dz_pos)
-    model.Add(z1 - z2 < 0).OnlyEnforceIf(dz_pos.Not())
-
-# Example usage
-model = cp_model.CpModel()
-x1 = model.NewIntVar(0, 10, 'x1')
-y1 = model.NewIntVar(0, 10, 'y1')
-z1 = model.NewIntVar(0, 10, 'z1')
-x2 = model.NewIntVar(0, 10, 'x2')
-y2 = model.NewIntVar(0, 10, 'y2')
-z2 = model.NewIntVar(0, 10, 'z2')
-edge = model.NewBoolVar('edge')
-
-add_manhattan_neighbor_constraint(model, x1, y1, z1, x2, y2, z2, edge)
-
-"""
+    return output_lines
