@@ -108,6 +108,7 @@ class ParseData:
 
 class Parser:
     def __init__(self, action_data):
+        self.lines = []
         self.parsing = []
         self.coordinates = {}
         self.origin = Coord(0,0,0)
@@ -123,6 +124,10 @@ class Parser:
         self.n_groups = {}
         self.aliases = {}
 
+    def new_line(self):
+        self.lines.append(self.parsing)
+        self.parsing = []
+    
     def add_string(self, string):
         self.parsing.append(string)
 
@@ -194,12 +199,17 @@ class Parser:
         return result_name
 
     def final(self):
-        final = ""
-        for item in self.parsing:
-            if type(item) == str:
-                final += item
-            elif type(item) == Action:
-                final += self.get_answer(item)
+        final = []
+        if self.parsing:
+            self.new_line()
+        for item in self.lines:
+            line = ""
+            for subitem in item:
+                if type(subitem) == str:
+                    line += subitem
+                elif type(subitem) == Action:
+                    line += self.get_answer(subitem)
+            final.append(line)
         return final
 
 class Action:
@@ -281,6 +291,7 @@ def parse_command(command_lines, parse_data):
                 answer_action(string[1:], parser)
             else:
                 parser.add_string(string)
+        parser.new_line()
 
     return parser.final()
 

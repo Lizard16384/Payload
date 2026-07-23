@@ -615,5 +615,5 @@ def compile_command(input_str):
     requirements = position_requirements.return_data()
     positions_lines = calculate_positions.calculate(requirements, path)  # Verify validity of position arrangement or update for a new arrangement if requirements have changed
 
-    command = parse.parse_command(compressor_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(raw_data)])
+    command = "".join(parse.parse_command(compressor_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(raw_data)]))
     return command
