@@ -2,7 +2,7 @@
 
 A tool for creating All In One Commands in modern versions of Minecraft by greatly increasing the usable length of a command.
 
-# Why it exists
+## Why it exists
 
 "It's 2026 bro we have datapacks"
 
@@ -17,35 +17,34 @@ Install:
 pip install git+https://github.com/Lizard16384/Payload.git@v0.1.0
 ```
 
-> **Note:** Payload is fully self-contained — paste the resulting command and run it, no further setup required. The tradeoffs: decompression works by having command blocks self-assemble and self-destroy within a fixed working area around the initial command block. This area is known in advance (see diagram below) — just make sure it's not important before pasting. This structure is the heart and soul of payload and generally isn't modified without major overhauls to how it works in minecraft, though other development-aid tools can be safely built alongside Payload as long as they don't touch it.
+> **Note:** Payload is fully self-contained — paste the resulting command and run it, no further setup required. The (minor) consequence: decompression works by having command blocks self-assemble and self-destroy within a fixed working area around the initial command block. This area is known in advance (see diagram below) — just make sure it's not important before pasting. This structure is the heart and soul of payload and generally isn't modified without major overhauls to how it works in minecraft, though other development tools can be safely built alongside Payload as long as they don't touch it (which they shouldn't).
 
-**Working area:** 4×4×4, with the initial command block at the positive-most of the middle 4 bottom blocks.
+**Working area:** 4×4×4, with the initial command block at the positive-most of the middle 4 bottom blocks. Ensure this area is empty/unimportant before use.
 
 [diagram — coming soon]
 
-```python
-from payload import final
+**Basic usage:**
 
-final(final_command, mode="clipboard")
+```python
+from payload import finish
+
+finish.finish(some_text, ("clipboard","write"))
 ```
 
-- `final_command` — the too-long, but otherwise valid, command you want compressed
+finish(final_command, mode, output_file):
+- `final_command` — the too-long, but otherwise valid, command you want compressed, can be semi-generated with payload's tools
 - `mode` — `"clipboard"`, `"write"`, or a list of both
 - `output_file` — optional, defaults to `result.txt` if `"write"` is used
 
-See `sample.py` for a complete example.
-
-**Additional tools format**
-
-Payload expects most of its other features to be used inline with a similar structure to datapack macros - being specified with $(data) - see the docstrings in 'sample.py' for the expected syntax and usage.
+See `sample` files for more complete information on how tools are to be used.
 
 ## Functional Overview
 
 ### Why it works
 
-If you've worked with all in one commands before, chances are you know that Minecraft will not let you run a command longer than 32,500 characters in length. Or rather, that's the oversimplication you may know. What's actually happening is that Minecraft has a limit on the length of a string that can be sent to the server or received by the client of, in most cases, about that long. Thus, the limit of a command block is artificially imposed to prevent you from pasting more than 32,500 characters into its menu.
+If you've worked with all in one commands before, chances are you know that Minecraft will not let you run a command longer than 32,500 characters in length. Or rather, that's the widespread oversimplication. What's actually happening is that Minecraft has a limit on the length of a string that can be sent to the server or received by the client of, in most cases, about that long, with more details that aren't important as an overview. Thus, the limit of a command block is artificially imposed to prevent you from pasting more than 32,500 characters into its menu.
 
-But there is no limit to the length of a command that can be run by the server. Good luck getting it there, but then it works just fine; that's what Payload does.
+But there is no limit to the length of a command that can be run by the server. Good luck getting it there, but then it works just fine; that's what Payload does. [The command is then willing and able to exist (it works) and not exist (it can't be saved) until otherwise observed by a player (kicks the player)](https://en.wikipedia.org/wiki/Schr%C3%B6dinger's_cat)
 
 ### Compression
 
@@ -53,7 +52,7 @@ The most important aspect of this project is what gets it useful in the first pl
 
 For example, say you have the string `"abc abc abc defg"`. The pairing `"ab"` occurs most frequently, so you replace the string to be something like `"Xc Xc Xcdefg"`, and you track that `X = "ab"`. Now the pair `"Xc"` occurs most frequently, the string turns into `"Y Y Ydefg"` and `Y = "Xc"`. Once more turns into `"ZZZdefg"` with `Z = "Y "`.
 
-Do this over and over again, and pretty quickly you have a much more efficient way of representing the same data. One of the primary reasons I like this algorithm is because most of its complication happens during encoding, while its decoding sequence is incredibly straightforward and easy to work with: take a value, substitute it for that value's definition of other values, repeat until finished. This is useful because I want to use as little logic as possible to decode once in Minecraft: uncompressed characters are a lot more costly to what can be fit in the command than whatever's going on inside the payload.
+Do this over and over again, and pretty quickly you have a much more efficient way of representing the same data. One of the primary reasons I like this algorithm is because most of its complication happens during encoding, while its decoding sequence is incredibly straightforward and easy to work with: take a value, substitute it for that value's definition of other values, repeat until finished. This is useful because I want to use as little logic as possible to decode once in Minecraft: uncompressed characters are a lot more costly to what can be fit in the command than whatever's going on inside the payload, but I also want pretty good compression capability.
 
 Beyond re-pair, there are a few more things done before considering the compressed data complete. Most importantly, pair replacements are condensed when two pairs are only ever used together. For example, in the string `"abc abc abc abc"`, `"ab"` and `"bc"` are only ever seen in `"abc"`, so instead of having replacements turn `"ab"` into `"X"` and `"Xc"` into `"Y"`, it can go straight from `"abc"` to `"Y"`. This comes with the downside of variable-length replacements — you can no longer assume everything just replaces two values together. This is almost entirely inconsequential to both the command blocks required to interpret it and the data itself by sorting the replacements by ascending length and reserving a value that says "hey you're about to change the replacement length" followed by the new length, and then resuming the replacements with the new length of each one.
 

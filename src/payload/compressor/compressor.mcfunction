@@ -12,7 +12,7 @@ setblock $(+setup_n) chain_command_block[facing=$(setup_next)]{auto:1,UpdateLast
 setblock $(+setup_n) chain_command_block[facing=$(setup_n:~:setup2)]{auto:1,UpdateLastExecution:0,Command:'execute unless data entity 4d616465-2062-7920-4c69-7a6172643136 data.commands[0] run setblock $(setup_n:->:setup2) chain_command_block[facing=$(setup2:~:init1)]{auto:1,UpdateLastExecution:0}'}"},{id:command_block_minecart,Command:"
 setblock $(end) air"},{id:command_block_minecart,Command:"
 
-summon armor_stand ~ ~ ~ {CustomName:'Command is currently being decompressed. This may take several seconds.',CustomNameVisible:1,UUID:uuid('4d616465-2062-7920-4c69-7a6172643136'),Health:0,DeathTime:19,Marker:1,Invisible:1,equipment:{mainhand:{id:ice,components:{item_model:air}},offhand:{id:ice,components:{item_model:air}}}}",Tags:[thedata],data:{commands:[
+summon armor_stand ~ ~ ~ {UUID:uuid('4d616465-2062-7920-4c69-7a6172643136'),Health:0,DeathTime:19,Marker:1,Invisible:1,equipment:{mainhand:{id:ice,components:{item_model:air}},offhand:{id:ice,components:{item_model:air}}}}",Tags:[compressor.data],data:{commands:[
 
 ['$(setup5:->:+ench_n)',$(ench_next),'enchant 4d616465-2062-7920-4c69-7a6172643136 lure'],
 ['$(setup5:->:+ench_n)',$(ench_next),'data modify block $(ench_n:->:ench_n+1) Command set from block $(ench_n:->:ench_n-1) LastOutput.extra[0].extra[0].with[0]'],
@@ -58,11 +58,16 @@ summon armor_stand ~ ~ ~ {CustomName:'Command is currently being decompressed. T
 ['$(setup5:->:+final_n)',$(final_next),'enchant 4d616465-2062-7920-4c69-7a6172643136 lure'],
 ['$(setup5:->:+final_n)',$(final_next),'data modify storage $(~storage) main.command set from block $(final_n:->:final_n-1) LastOutput.extra[0].extra[0].with[0]'],
 ['$(setup5:->:+final_n)',$(final_next),'execute store result block $(final_n:->:aio) auto int 1 run data modify block $(final_n:->:aio) Command set from storage $(~storage) main.command'],
-['$(setup5:->:+final_n)',$(final_next),'data remove storage $(~storage) main'],
+['$(setup5:->:+final_n)',$(final_next),'data remove storage $(~storage) main'],$(=final_n,destroy_start)
 ['$(setup5:->:+final_n)',$(final_next),'scoreboard objectives remove $(~scoreboard)'],
+['$(setup5:->:+final_n)',$(final_next),'kill @n[tag=compressor.text]'],
 ['$(setup5:->:+final_n)',$(final_n:~:end),'fill $(final_n:->:corner---) $(final_n:->:corner+++) air replace chain_command_block']
 ]}},{id:command_block_minecart,Command:"
 
-data modify entity 4d616465-2062-7920-4c69-7a6172643136 data set from entity @n[tag=thedata] data"},{id:command_block_minecart,Command:"
+setblock $(destroy_backup) repeating_command_block[facing=$(destroy_backup:~:destroy_start)]{auto:1,Command:'setblock ~ ~ ~ air'}"},{id:command_block_minecart,Command:"
+
+data modify entity 4d616465-2062-7920-4c69-7a6172643136 data set from entity @n[distance=..0,tag=compressor.data] data"},{id:command_block_minecart,Command:"
+
+summon text_display ~ ~ ~ {Tags:[compressor.text],billboard:vertical,line_width:999,text:'Thank you for using Payload by Lizard16!\n\nCommand is currently being decompressed.\nThis may take several seconds.'}"},{id:command_block_minecart,Command:"
 
 execute store result block $(minecart2:->:aio) auto int 0 align xz run kill @e[type=command_block_minecart,dy=0]"}]}
