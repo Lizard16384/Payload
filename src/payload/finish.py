@@ -25,6 +25,7 @@ def read_file_lines(file_name):
     return file_lines
 
 def finish(raw_final, output, file_name = "result.txt"):
+    print("Parsing and compressing provided command...")
     final = compress.compile_command(raw_final)
 
     if len(final) > 32500:

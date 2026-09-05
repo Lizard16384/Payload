@@ -31,6 +31,8 @@ def return_data():
 
                 {"name":"extra_to_rule8","start":["ench4"],"end":["rule8"]},
                 {"name":"odd_to_num1","start":["num_go_out"],"end":["num1"]}, # e
+
+                {"name":"destroy_backup","start":["final5"],"end":[]}
                 ]
             ,"offsets":[
                 {"from":"aio","to":"minecart1","offset":[0,1,0]},

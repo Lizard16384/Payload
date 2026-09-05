@@ -1,4 +1,5 @@
-"""How to structure a command file to use payload features
+"""
+How to structure a command file to use payload features
 
 Uses several custom format implementations in order to automate some otherwise tedious interactions in all in one commands.
 
@@ -78,18 +79,55 @@ Will get back to it after stable releases.
 At the moment, this is all that the parser does, whist being the medium with which to make use of compression.
 """
 
-from payload.parser import parse
-from payload import finish
+summon falling_block ~ ~.8 ~ {BlockState:{Name:redstone_block},Passengers:[{id:falling_block,BlockState:{Name:activator_rail}},
+{id:command_block_minecart,Command:"setblock ~ ~-2 ~ repeating_command_block{auto:1,Command:'fill ~ ~ ~ ~ ~2 ~ air'}"},
 
-def main():
-    # Basics of making use of the main features of payload - compressing, position replacement, and raw data insertion
-    in_command = "path_to_raw_command/command.txt"
-    in_positions = "path_to_command_block_positions/positions.txt"
-    some_other_raw_data = {}
-    command_lines = finish.read_file_lines(in_command)
-    positions_lines = finish.read_file_lines(in_positions)
-    final_command = parse.parse_command(command_lines, [parse.get_parse_positions(positions_lines), parse.get_parse_raw_data(some_other_raw_data)])
-    finish.finish(final_command, ("clipboard","write"), "result.txt")
+{id:command_block_minecart,Command:"say Sample all in one command demonstrating Payload tools"},
 
-if __name__ == "__main__":
-    main()
+"""
+Positioning command blocks in sequence
+
+Suppose positions provided in file are as follows:
+
+impulse:(0,1,0)
+chain1:(0,2,0)
+chain2:(0,3,0)
+chain3:(1,3,0)
+chain4:(1,2,0)
+
+And suppose these positions were generated with the requirement that chain1 starts next to impulse and chain4 ends next to chain1.
+
+They are then created as such:
+$(impulse) retrieves the offset of impulse from 0 0 0
+$(impulse:~:chain1) retrieves the facing direction from impulse going to chain1
+$(=chain1, first_chain) sets first_chain to mean the first thing as chain_n
+    but since chain_n resolves into a dynamic id, it is fixed to whatever the chain sequence was at that time
+    in this case, chain1
+$(:->:+chain_n) retrieves the offset of chain_n from 0 0 0, specified such that it can originate from somewhere else
+    + before chain_n increments the id of chain throughout the command
+$(impulse:~:chain_n+1) retrieves the facing direction from impulse going to the next chain, or, +1 in chain's current id
+$(+chain_n) does the same thing as $(:->:+chain_n)
+$(impulse:~:chain_next) does the same thing as $(impulse:~:chain_n+1)
+$(impulse:~:first_chain) retrieves the offset from impulse to first_chain, an alias of chain1
+"""
+# These command blocks won't do anything and aren't even setup to run multiple times per tick
+{id:command_block_minecart,Command:"setblock $(impulse) command_block[facing=$(impulse:~:chain1)]"},
+{id:command_block_minecart,Command:"setblock $(+chain_n) chain_command_block[facing=$(chain_n:~:chain_n+1)]"}, $(=chain1,first_chain)
+{id:command_block_minecart,Command:"setblock $(+chain_n) chain_command_block[facing=$(chain_n:~:chain_n+1)]"},
+{id:command_block_minecart,Command:"setblock $(+chain_n) chain_command_block[facing=$(chain_next)]"},
+{id:command_block_minecart,Command:"setblock $(+chain_n) chain_command_block[facing=$(chain_n:~:first_chain)]"},
+
+"""
+Inserting raw data somewhere
+
+Suppose you want to insert data generated externally, and suppose that data is as follows:
+
+{"sample_data":"hello world"}
+
+Using it is as such:
+$(~sample_data) inserts its value as text (only supports string values)
+"""
+# Nesting strings isn't handled natively yet, be careful with generating data that may contain more strings for minecraft to interpret
+{id:command_block_minecart,Command:"data modify block $(impulse) Command set value '$(~sample_data)'"},
+
+{id:command_block_minecart,Command:"execute align xz run kill @e[type=command_block_minecart,dy=0]"}]}
