@@ -14,7 +14,7 @@ While it's possible to just split a long command into multiple commands and have
 
 Install:
 ```bash
-pip install git+https://github.com/Lizard16384/Payload.git@v0.1.0
+pip install git+https://github.com/Lizard16384/Payload.git@v1.0.0
 ```
 
 > **Note:** Payload is fully self-contained — paste the resulting command and run it, no further setup required. The (minor) consequence: decompression works by having command blocks self-assemble and self-destroy within a fixed working area around the initial command block. This area is known in advance (see diagram below) — just make sure it's not important before pasting. This structure is the heart and soul of payload and generally isn't modified without major overhauls to how it works in minecraft, though other development tools can be safely built alongside Payload as long as they don't touch it (which they shouldn't).
