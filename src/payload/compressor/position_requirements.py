@@ -8,13 +8,15 @@ def return_data():
                 {"name":"num","amount":10,"start":[],"end":[]}, # o e o e e o e o e o
                 {"name":"ench","amount":4,"start":[],"end":[]}, # e o e o
                 #{"name":"result","amount":3,"start":[],"end":[]}, # e o o e o e o
-                {"name":"final","amount":8,"start":[],"end":["end"]}, # e
+                {"name":"final","amount":4,"start":[],"end":["destroy1"]}, # e
+                {"name":"destroy","amount":9,"start":[],"end":["end"]},
                 {"name":"setup","amount":7,"start":[],"end":["setup2"],"intersect":[0,1]}
             ],
             "extra_connections":[
                 ["rule2","num1"],["rule2","out1"],["rule5","rule1"],["rule9","num1"],
                 ["num8","num4"],["num6","num9"],["num10","rule3"],["num10","out3"],
-                ["ench4","num5"],["ench4","out2"]
+                ["ench4","num5"],["ench4","out2"],
+                ["gamerule","setup1"]
             ],
             "disconnections":[
                 {"rule2","rule3"},
@@ -22,6 +24,7 @@ def return_data():
                 {"num4","num5"},{"num8","num9"},
             ],
             "individual":[
+                {"name":"gamerule","start":["setup1"],"end":[]},
                 {"name":"aio","start":[],"end":[]},
                 {"name":"ench_go_rule","start":["rule7"],"end":["ench1"]}, # e
                 {"name":"ench_go_out","start":["out3"],"end":["ench1"]}, # o
@@ -32,7 +35,7 @@ def return_data():
                 {"name":"extra_to_rule8","start":["ench4"],"end":["rule8"]},
                 {"name":"odd_to_num1","start":["num_go_out"],"end":["num1"]}, # e
 
-                {"name":"destroy_backup","start":["final5"],"end":[]}
+                {"name":"destroy_backup","start":["setup1"],"end":["destroy1"]}
                 ]
             ,"offsets":[
                 {"from":"aio","to":"minecart1","offset":[0,1,0]},
@@ -41,10 +44,10 @@ def return_data():
             } # e
 
     # Assumed that these are already neighbors.
-    conditionals = []
+    conditionals = [["gamerule","setup1","destroy_backup"]]
 
     # Define the area to work with
-    size = {"x":4,"y":4,"z":4}
+    size = {"x":5,"y":4,"z":5}
 
     fixed_positions = {"aio":[2,0,2]}
 

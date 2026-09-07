@@ -3,7 +3,9 @@ data merge storage $(~storage) {main:{$(~snbt)}}'},{id:command_block_minecart,Co
 scoreboard objectives add $(~scoreboard) dummy"},{id:command_block_minecart,Command:"
 scoreboard players set 1 $(~scoreboard) 1"},{id:command_block_minecart,Command:"
 
-setblock $(+setup_n) command_block[facing=$(setup_next)]{auto:1,Command:'setblock ~ ~ ~ air'}"},{id:command_block_minecart,Command:'
+setblock $(gamerule) command_block[facing=$(gamerule:~:setup1)]{auto:1,Command:'execute store result score gamerule $(~scoreboard) run gamerule max_command_sequence_length'}"},{id:command_block_minecart,Command:"
+setblock $(+setup_n) command_block[facing=$(setup_next)]{auto:1,Command:'gamerule max_command_sequence_length 16777216'}"},{id:command_block_minecart,Command:'
+# 16777216 Has been plenty high enough so far, automatic calculation of needed length to come
 setblock $(+setup_n) chain_command_block[facing=$(setup_next)]{auto:1,UpdateLastExecution:0,Command:\'execute as 4d616465-2062-7920-4c69-7a6172643136 run item modify entity @s weapon.mainhand {"function":"minecraft:set_name","entity":"this","name":["setblock ",{nbt:"data.commands[0][0]","entity":"@s",interpret:1}," chain_command_block[facing=",{nbt:"data.commands[0][1]","entity":"@s",interpret:1},"]{auto:1,UpdateLastExecution:0,Command:",{nbt:"data.commands[0][2]","entity":"@s",plain:1},"}"]}\'}'},{id:command_block_minecart,Command:"
 setblock $(+setup_n) chain_command_block[facing=$(setup_next)]{auto:1,UpdateLastExecution:0,Command:'enchant 4d616465-2062-7920-4c69-7a6172643136 lure'}"},{id:command_block_minecart,Command:"
 setblock $(+setup_n) chain_command_block[facing=$(setup_next)]{auto:1,UpdateLastExecution:0,Command:'data modify block $(setup_n:->:setup_n+1) Command set from block $(setup_n:->:setup_n-1) LastOutput.extra[0].extra[0].with[0]'}"},{id:command_block_minecart,Command:"
@@ -57,14 +59,19 @@ summon armor_stand ~ ~ ~ {UUID:uuid('4d616465-2062-7920-4c69-7a6172643136'),Heal
 ['$(setup5:->:+final_n)',$(final_next),'execute as 4d616465-2062-7920-4c69-7a6172643136 run item modify entity @s weapon.mainhand {"function":"minecraft:set_name","entity":"this","name":{nbt:"main.result",storage:"$(~storage)",interpret:1}}'],
 ['$(setup5:->:+final_n)',$(final_next),'enchant 4d616465-2062-7920-4c69-7a6172643136 lure'],
 ['$(setup5:->:+final_n)',$(final_next),'data modify storage $(~storage) main.command set from block $(final_n:->:final_n-1) LastOutput.extra[0].extra[0].with[0]'],
-['$(setup5:->:+final_n)',$(final_next),'execute store result block $(final_n:->:aio) auto int 1 run data modify block $(final_n:->:aio) Command set from storage $(~storage) main.command'],
-['$(setup5:->:+final_n)',$(final_next),'data remove storage $(~storage) main'],$(=final_n,destroy_start)
-['$(setup5:->:+final_n)',$(final_next),'scoreboard objectives remove $(~scoreboard)'],
-['$(setup5:->:+final_n)',$(final_next),'kill @n[tag=compressor.text]'],
-['$(setup5:->:+final_n)',$(final_n:~:end),'fill $(final_n:->:corner---) $(final_n:->:corner+++) air replace chain_command_block']
+['$(setup5:->:+final_n)',$(final_n:~:destroy1),'execute store result block $(final_n:->:aio) auto int 1 run data modify block $(final_n:->:aio) Command set from storage $(~storage) main.command'],
+['$(setup5:->:+destroy_n)',$(destroy_next),'fill $(destroy_n:->:destroy_backup) $(destroy_n:->:gamerule) air'],$(=destroy_n,destroy_start)
+['$(setup5:->:+destroy_n)',$(destroy_next),'execute as 4d616465-2062-7920-4c69-7a6172643136 run item modify entity @s weapon.mainhand {"function":"minecraft:set_name","entity":"this","name":["gamerule max_command_sequence_length ",{score:{name:"gamerule",objective:"$(~scoreboard)",interpret:1}}]}'],
+['$(setup5:->:+destroy_n)',$(destroy_next),'enchant 4d616465-2062-7920-4c69-7a6172643136 lure'],
+['$(setup5:->:+destroy_n)',$(destroy_next),'data modify block $(destroy_n:->:destroy_n+1) Command set from block $(destroy_n:->:destroy_n-1) LastOutput.extra[0].extra[0].with[0]'],
+['$(setup5:->:+destroy_n)',$(destroy_next),''],
+['$(setup5:->:+destroy_n)',$(destroy_next),'data remove storage $(~storage) main'],
+['$(setup5:->:+destroy_n)',$(destroy_next),'scoreboard objectives remove $(~scoreboard)'],
+['$(setup5:->:+destroy_n)',$(destroy_next),'kill @n[tag=compressor.text]'],
+['$(setup5:->:+destroy_n)',$(destroy_n:~:end),'fill $(destroy_n:->:corner---) $(destroy_n:->:corner+++) air replace chain_command_block']
 ]}},{id:command_block_minecart,Command:"
 
-setblock $(destroy_backup) repeating_command_block[facing=$(destroy_backup:~:destroy_start)]{auto:1,Command:'setblock ~ ~ ~ air'}"},{id:command_block_minecart,Command:"
+setblock $(destroy_backup) repeating_command_block[facing=$(destroy_backup:~:destroy_start)]{auto:1}"},{id:command_block_minecart,Command:"
 
 data modify entity 4d616465-2062-7920-4c69-7a6172643136 data set from entity @n[distance=..0,tag=compressor.data] data"},{id:command_block_minecart,Command:"
 
