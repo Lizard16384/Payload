@@ -1,3 +1,5 @@
+import re
+
 class Coord:
     def __init__(self, x, y, z):
         self.update(x, y, z)
@@ -220,30 +222,26 @@ class Action:
 
 
 
-def split_by_actions(line):
+def split_by_actions(line, delimeter=("$(",")")):
     """
     Takes a line and splits it up into a list separated with actions
     Thus, every other item in the new list is an action
 
-    It is rudimentary and very much breaks if you attempt to nest them, but that's alright because there exists no nesting functionality yet
+    Supports custom start and end sequences. Default is $(data).
+    Anything should work as long as every occurence of it is only used as an action
+    If for some reason it is not sufficient, a backslash before will ignore it as an action.
     """
+    start, end = re.escape(delimeter[0]), re.escape(delimeter[1])
     split_line = []
-    action_index = 0
-    action_end = 0
-
-    while action_index != -1:
-        action_index = line.find("$(",action_end) # Find next action, or quit
-        if action_index == -1:
-            continue
-
-        # Add the text in between actions before finding the end of the next action
-        # Thus it's going from end of last action to start of next action
-        split_line.append(line[action_end:action_index])
-
-        action_end = line.find(")",action_end) + 1
-
-        split_line.append("$" + line[action_index + 2 : action_end - 1])
-    split_line.append(line[action_end:])
+    working_index = 0
+    for action in re.finditer(f"{start}.*?{end}",line):  # find $(stuff) occurences (inclusive)
+        split_line.append(line[working_index:action.start()])
+        if line[action.start() - 1] == "\\":
+            split_line[-1] == split_line[-1][:-1] + action.group()
+        else:
+            split_line.append("$" + action.group()[2:-1])
+        working_index = action.end() + 1
+    split_line.append(line[working_index:])
     return split_line
 
 
