@@ -26,16 +26,22 @@ def read_file_lines(file_name):
 
 def finish(raw_final, output, file_name = "result.txt"):
     print("Parsing and compressing provided command...")
-    final = compress.compile_command(raw_final)
+    if len(raw_final) > 32500:
+        final = compress.compile_command(raw_final)
+        if len(final) > 32500:
+            raise CommandLengthError(len(final), f"Payload character length exceeds 32500! Command cannot be pasted in one command!")
+        elif False:  # TODO: check byte length not to exceed 65536 and check behavior - maybe command can still be run, packet just can't be sent back to client.
+            raise CommandWireError(len(final), f"Payload byte length exceeds 65536! Command cannot be sent to server in one command!")
+        else:
+            print("Payload successfully compiled command.")
+            print(f"Payload: {((len(final)/32500) * 100):.2f}%, {len(final)} used of 32500")
 
-    if len(final) > 32500:
-        raise CommandLengthError(len(final), f"Payload character length exceeds 32500! Command cannot be pasted in one command!")
-    elif False:  # TODO: check byte length not to exceed 65536 and check behavior - maybe command can still be run, packet just can't be sent back to client.
-        raise CommandWireError(len(final), f"Payload byte length exceeds 65536! Command cannot be sent to server in one command!")
     else:
-        print("Payload successfully compiled command.")
-        print(f"Payload: {((len(final)/32500) * 100):.2f}%, {len(final)} used of 32500")
-    
+        print("Input command already fits in one command for pasting. Compression not needed.")
+        print(f"Payload: {((len(raw_final)/32500) * 100):.2f}%, {len(raw_final)} used of 32500 (no compression needed)")
+        final = raw_final
+
+
     if "clipboard" in output:
         pyperclip.copy(final)
     if "write" in output:
