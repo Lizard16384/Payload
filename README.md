@@ -21,8 +21,6 @@ pip install git+https://github.com/Lizard16384/Payload.git@v1.0.0
 
 **Working area:** 5×4×5, with the initial command block at the bottom middle. Ensure this area is empty/unimportant before use.
 
-[diagram — coming soon]
-
 **Basic usage:**
 
 ```python
