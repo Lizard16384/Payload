@@ -24,6 +24,7 @@ class BlockGraph:
         self._start = None
         self._blocks = {}
         self._extras = []
+        self._extra_changes = []
 
     def _add_block(self, new):
         if new not in self._blocks:
@@ -47,7 +48,6 @@ class BlockGraph:
                 for neighbor in group:
                     if neighbor._color is None:
                         next_color = self.model.new_bool_var(f"{neighbor._name}")
-                        #self.model.add(color != next_color)
                         self.assign_colors(neighbor, next_color)
 
     def set_requirements(self):
@@ -56,8 +56,9 @@ class BlockGraph:
                 for group in (block._outbound, block._inbound):
                     for neighbor in group:
                         if neighbor._degree <= 2:
-                            self.model.add(block._color != neighbor._color)
-            elif block._degree <= 10:
+                            if block._color is not None and neighbor._color is not None:
+                                self.model.add(block._color != neighbor._color)
+            elif block._degree <= 6:
                 block._extra = self.model.new_bool_var(f"{block._name}_extra")
                 self._extras.append(block._extra)
                 for neighbor in block._outbound:
@@ -66,11 +67,12 @@ class BlockGraph:
                 for neighbor in block._inbound:
                     # Restrict inbound to opposite color if the extra is not in place
                     restricted = self.model.new_bool_var(f"{block._name}_extra_helper")
+                    self._extra_changes.append(restricted)
                     self.model.add(restricted != block._extra)
                     self.model.add(block._color != neighbor._color).only_enforce_if(restricted)
             else:
                 raise Exception(
-                    f"Single block '{block._name}' requires more than 10 direct neighbors!"
+                    f"Single block '{block._name}' requires more than 6 direct neighbors!"
                     f"Accounting for this is not yet implemented!"
                     )
 
@@ -146,14 +148,22 @@ def calculate_extras(requirements, start):
     add_all_neighbors(graph, data)
     graph.set_start(start)
     graph.assign_colors(graph._start, init)
-    graph.set_requirements()
-    print(graph)
 
-    extras = model.new_int_var(0,len(graph._extras),"num_extras")
+    graph.set_requirements()
+
+    extras = model.new_int_var(0,len(graph._extras),"_num_extras")
     model.add(sum(graph._extras) <= extras)
     model.minimize(extras)
 
     solver = cp_model.CpSolver()
+    status = solver.solve(model)
+
+    min_extras = int(solver.ObjectiveValue())
+    model.add(extras == min_extras)
+
+    blocks_unchanged = model.new_int_var(0,len(graph._extra_changes),"_num_extra_diffs")
+    model.add(sum(graph._extras) <= extras)
+    model.maximize(blocks_unchanged)
     status = solver.solve(model)
 
     # Statistics.
@@ -167,6 +177,7 @@ def calculate_extras(requirements, start):
 
     else:
         print("FAILED")
+        print(status)
 
 if __name__ == "__main__":
     requirements = position_requirements.return_data()
