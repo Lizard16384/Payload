@@ -294,34 +294,34 @@ def parse_command(command_lines, parse_data):
     return parser.final()
 
 def answer_action(action, parser):
-    if action[0] == "#":
-        pass
+    action_data = action.split(":")
+    tag = action_data[0]
+    body = action_data[1]
+    if tag[0] == "#":
         return
-    elif action[0] == "~":
-        parser.add_raw_data(action[1:])
+    elif tag == "data":
+        parser.add_raw_data(body)
         return
-    elif action[0] == "=":
-        names = action[1:].split(",")
+    elif tag == "alias":
+        names = body.split(",")
         parser.add_alias(names[0], names[1])
         return
-    if action[-5:] == "_next":
-        action = f"{action[:-5]}_n:~:{action[:-5]}_n+1"
+    if body[-5:] == "_next":
+        body =  f"{body[:-5]}_n,{body[:-5]}_n+1"
 
-    # Remaining actions are
-    operations = action.split(":")
+    operations = body.split(",")
     if len(operations) == 1: # Special case of get position from 0 0 0
         parser.add_relative_offset(None, operations[0])
         return
 
     first = operations[0]
-    second = operations[2]
-    type = operations[1]
+    second = operations[1]
 
-    if type == "=": # Assign a coordinate
+    if tag == "set": # Assign a coordinate
         parser.update_coord(first, second.split(","))
-    elif type == "->": # from-to local coordinate difference
+    elif tag == "dir": # from-to local coordinate difference
         parser.add_relative_offset(first, second)
-    elif type == "~": # local N/S/E/W/U/D
+    elif tag == "rot": # local N/S/E/W/U/D
         parser.add_relative_direction(first, second)
 
 def get_parse_positions(position_lines):
