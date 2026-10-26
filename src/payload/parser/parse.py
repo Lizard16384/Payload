@@ -234,7 +234,9 @@ def split_by_actions(line, delimeter=("$(",")")):
     start, end = re.escape(delimeter[0]), re.escape(delimeter[1])
     split_line = []
     working_index = 0
-    for action in re.finditer(f"{start}.*?{end}",line):  # find $(stuff) occurences (inclusive)
+    for action in re.finditer(f"{start}.*?{end}",line):  # regex to find actions
+        # negative lookbehind for backslash is not used as backslash needs to be removed
+        # later anyways and it's convenient to do so while actions are being read
         split_line.append(line[working_index:action.start()])
         if line[action.start() - 1] == "\\":
             split_line[-1] == split_line[-1][:-1] + action.group()
