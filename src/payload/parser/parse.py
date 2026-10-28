@@ -296,12 +296,12 @@ def parse_command(command_lines, parse_data):
     return parser.final()
 
 def answer_action(action, parser):
+    if action[0] == "#":
+        return
     action_data = action.split(":")
     tag = action_data[0]
     body = action_data[1]
-    if tag[0] == "#":
-        return
-    elif tag == "data":
+    if tag == "data":
         parser.add_raw_data(body)
         return
     elif tag == "alias":
