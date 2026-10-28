@@ -56,7 +56,9 @@ Do this over and over again, and pretty quickly you have a much more efficient w
 
 Beyond re-pair, there are a few more things done before considering the compressed data complete. Most importantly, pair replacements are condensed when two pairs are only ever used together. For example, in the string `"abc abc abc abc"`, `"ab"` and `"bc"` are only ever seen in `"abc"`, so instead of having replacements turn `"ab"` into `"X"` and `"Xc"` into `"Y"`, it can go straight from `"abc"` to `"Y"`. This comes with the downside of variable-length replacements — you can no longer assume everything just replaces two values together. This is almost entirely inconsequential to both the command blocks required to interpret it and the data itself by sorting the replacements by ascending length and reserving a value that says "hey you're about to change the replacement length" followed by the new length, and then resuming the replacements with the new length of each one.
 
-Lastly, with lots of compressed data, it needs to be optimized to send the data in a command. The current method of doing this is to convert each number into the highest needed base (up to 92) depending on how many unique values there are, and use two characters to represent each value. This isn't as efficient as it can be yet — future versions may work differently.
+Lastly, with lots of compressed data, it needs to be optimized to send the data in a command. The current method of doing this is to convert each number into a unique unicode character and send it alongside a batch of each unicode character used in order to associate a value to each character.
+This is not yet the most optimal way of sending data, but it is about twice as efficient as the
+previous method, which can fit a lot more than twice as much original data.
 
 ### Enchant Flattening
 
