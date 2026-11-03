@@ -96,12 +96,22 @@ class GroupName:
     def __init__(self, name):
         self._name = name
         self._id = 0
-    
+
     def get_name(self, offset):
-        return self._name + str(self._id + offset)
+        if self._id == 0:
+            if offset != 0:
+                raise ValueError(f"Cannot reference within groups before incrementing! ({offset} from {self._name}, which is currently undefined)")
+            return self._name
+        
+        val = self._id + offset
+        name = self._name + str(val)
+        if val < 1:
+            raise ValueError(f"Block {name} does not exist!")
+        else:
+            return name
     
-    def increment(self):
-        self._id += 1
+    def increment(self, num=1):
+        self._id += num
 
 class ParseData:
     def __init__(self, type, data):
@@ -123,7 +133,7 @@ class Parser:
                 for key, value in new.data.items():
                     self.raw_data[key] = value
 
-        self.n_groups = {}
+        self.groups = {}
         self.aliases = {}
 
     def new_line(self):
@@ -137,16 +147,16 @@ class Parser:
         self.parsing.append(self.raw_data[name])
 
     def add_alias(self, original, alias):
-        self.coordinates[self.process_n(alias)] = self.coordinates[self.process_n(original)]
+        self.coordinates[self.eval_name(alias)] = self.coordinates[self.eval_name(original)]
 
     def add_relative_offset(self, name1, name2):
-        self.parsing.append(Action("pos", self.process_n(name1), self.process_n(name2)))
+        self.parsing.append(Action("pos", self.eval_name(name1), self.eval_name(name2)))
 
     def add_relative_direction(self, name1, name2):
-        self.parsing.append(Action("dir", self.process_n(name1), self.process_n(name2)))
+        self.parsing.append(Action("dir", self.eval_name(name1), self.eval_name(name2)))
 
     def update_coord(self, name, coordinates):
-        name = self.process_n(name)
+        name = self.eval_name(name)
         if name not in self.coordinates:
             self.coordinates[name] = Coord(coordinates[0], coordinates[1], coordinates[2])
         else:
@@ -164,41 +174,29 @@ class Parser:
             answer = self.coordinates[action.name1].direction(self.coordinates[action.name2])
         return answer
 
-    def process_n(self, name):
-        if not name:
+    def eval_name(self, raw):
+        if raw is None:
             return
-        def parse_n(name):
-            raw_name, is_n, incr, delta_n = "", False, 0, 0
+        data = re.search(r"^(\d*(?=\+))?(\+?)(.*?)(\d*?)([-+]\d*)?$", raw)
+        incr = 0 if data.group(1) == None and data.group(2) == "" \
+                else 1 if data.group(1) == "" and data.group(2) == "+" \
+                else int(data.group(1))
+        id = data.group(4)
+        name = data.group(3)
+        delta = 0 if data.group(5) == None \
+                else 1 if data.group(5) == "+" \
+                else -1 if data.group(5) == "-" \
+                else int(data.group(5))
 
-            pos_of_n = name.rfind("_n")
-            if pos_of_n != len(name) - 2 and name[pos_of_n + 2] not in "+-":
-                return name, is_n, incr, delta_n
-            
-            is_n = True
-            if name[0] == "+":
-                amt = name.rfind("+")
-                raw_name = name[amt + 1:pos_of_n]
-                incr = amt + 1
-            else:
-                raw_name = name[:pos_of_n]
-            
-            delta_str = name[pos_of_n + 2:]
-            if len(delta_str) >= 1:
-                if delta_str[0] == "+":
-                    delta_n = int(delta_str[1:])
-                else:
-                    delta_n = int(delta_str)
+        if id != "":
+            if data.group(2) != "" or data.group(5) != None:
+                raise ValueError(f"Numbers at the end name of {data.group(0)} is not understood alongsied group-scope modifiers")
+            return name + id
+        if name not in self.groups:
+            self.groups[name] = GroupName(name)
 
-            return raw_name, is_n, incr, delta_n
-        
-        raw_name, is_n, incr, delta_n = parse_n(name)
-        result_name = raw_name
-        if is_n:
-            if raw_name not in self.n_groups:
-                self.n_groups[raw_name] = 0
-            self.n_groups[raw_name] += incr
-            result_name = raw_name + str(self.n_groups[raw_name] + delta_n)
-        return result_name
+        self.groups[name].increment(incr)
+        return self.groups[name].get_name(delta)
 
     def final(self):
         final = []
@@ -309,7 +307,7 @@ def answer_action(action, parser):
         parser.add_alias(names[0], names[1])
         return
     if body[-5:] == "_next":
-        body =  f"{body[:-5]}_n,{body[:-5]}_n+1"
+        body =  f"{body[:-5]},{body[:-5]}+1"
 
     operations = body.split(",")
     if len(operations) == 1: # Special case of get position from 0 0 0
@@ -320,7 +318,7 @@ def answer_action(action, parser):
     second = operations[1]
 
     if tag == "set": # Assign a coordinate
-        parser.update_coord(first, second.split(","))
+        parser.update_coord(first, operations[1:])
     elif tag == "dir": # from-to local coordinate difference
         parser.add_relative_offset(first, second)
     elif tag == "rot": # local N/S/E/W/U/D

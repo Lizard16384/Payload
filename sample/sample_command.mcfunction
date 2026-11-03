@@ -112,10 +112,10 @@ $(rot:impulse,first_chain) retrieves the offset from impulse to first_chain, an 
 """
 # These command blocks won't do anything and aren't even setup to run multiple times per tick
 {id:command_block_minecart,Command:"setblock $(dir:impulse) command_block[facing=$(rot:impulse,chain1)]"},
-{id:command_block_minecart,Command:"setblock $(dir:+chain_n) chain_command_block[facing=$(rot:chain_n,chain_n+1)]"}, $(alias:chain1,first_chain)
-{id:command_block_minecart,Command:"setblock $(dir:+chain_n) chain_command_block[facing=$(rot:chain_n,chain_n+1)]"},
-{id:command_block_minecart,Command:"setblock $(dir:+chain_n) chain_command_block[facing=$(rot:chain_next)]"},
-{id:command_block_minecart,Command:"setblock $(dir:+chain_n) chain_command_block[facing=$(rot:chain_n,first_chain)]"},
+{id:command_block_minecart,Command:"setblock $(dir:+chain) chain_command_block[facing=$(rot:chain,chain+1)]"}, $(alias:chain1,first_chain)
+{id:command_block_minecart,Command:"setblock $(dir:+chain) chain_command_block[facing=$(rot:chain,chain+1)]"},
+{id:command_block_minecart,Command:"setblock $(dir:+chain) chain_command_block[facing=$(rot:chain_next)]"},
+{id:command_block_minecart,Command:"setblock $(dir:+chain) chain_command_block[facing=$(rot:chain,first_chain)]"},
 
 """
 Inserting raw data somewhere

@@ -115,7 +115,7 @@ def calculate(requirements, *path):
 
         for line in existing_solution:
             axes = set("+-")
-            if line[0:6] == "corner" and set(line[6:9]).issubset(axes):
+            if line[0:1] == "_" and line[4:5] == "_" and set(line[1:4]).issubset(axes):
                 continue
             line = line.split(":")
             name = line[0]
@@ -268,7 +268,7 @@ def calculate(requirements, *path):
                         corner = ("+" if x else "-") \
                             + ("+" if y else "-") \
                             + ("+" if z else "-")
-                        name = "corner" + corner
+                        name = f"_{corner}_"
                         coord = f"{name}:({x - origin[0]},{y - origin[1]},{z - origin[2]})"
                         output_lines.append(coord)
 
