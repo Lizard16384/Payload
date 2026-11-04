@@ -41,17 +41,19 @@ Assumed to work with relative offsets from each other. Coordinates are currently
 
 There are two kinds of block coordinates that follow a specific format: individual and groups. An individual block is left alone and handled as-is with a name as long as the name does not invoke group behavior. A group block abstracts away making use of an incredibly specific coordinate into an iteration-based structure. Groups eventually evaluate to and can be referenced to by their name followed by a number (starting at 1). Instead of using name1 to set a specific command and name2 to set a different command, both commands are used with name and evaluated at runtime to determine which belongs to name1 and name2. Formatting around the name dictates grouping behavior and grouping references as follows:
 
-* Prepending a name with a + indicates you want it to behave as a group and to begins sequencing that name. Optionally a number can be placed immediately before the + to determine how much to increment it by.
-* Appending a name with ±num evaluates to the group's block before or after that many times from the current id in iteration. Appending ± without a number afterwards is equivalent to ±1.
-* If you do not prepend a name with a +, the result id is referenced from whatever the current iteration of the group is. When it is prepended with a +, the group index is iterated and then relative behavior is applied after the fact.
+* Prepending a name with ±num indicates you want it to behave as a group and to begin sequencing that name.
+* Appending a name with ±num evaluates to the group's block before or after that many times from the current id in iteration.
+* Prepended and appended numbers in their respective context evaluate to ±1 if only ± is used.
+* Prepended and appended numbers are optional as long as the group has been iterated and defined as a group. Incrementing and relative offsets are calculated from whatever the current id in iteration is, and incrementing happens before offsetting.
 
 #### Example:
 
 ```
-+name name name+1
-+name name name-1
++name name name+
++name name name-
 2+name name-2 name-1
-+name-1 name name1
+1+name-1 name name-3
+-name- name name1
 ```
 
 #### Will evaluate to:
@@ -60,10 +62,11 @@ There are two kinds of block coordinates that follow a specific format: individu
 name1 name1 name2
 name2 name2 name1
 name4 name2 name3
-name4 name5 name1
+name4 name5 name2
+name3 name4 name1
 ```
 
-> \* If the blocks are properly used in actions. This example just demonstrates how the order of the names and their relative contexts are applied.
+> \* If the blocks are properly used in actions. This example just demonstrates how the order of the names and their relative contexts are applied. Most likely won't deal with hard-to-track sequences like the example, but the functionality is there.
 
 #### Note:
 

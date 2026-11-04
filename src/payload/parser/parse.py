@@ -95,23 +95,29 @@ class Coord:
 class GroupName:
     def __init__(self, name):
         self._name = name
-        self._id = 0
+        self._id = None
+        self._isgroup = None
 
     def get_name(self, offset):
-        if self._id == 0:
+        if self._isgroup == None:
+            self._isgroup = False
+        if not self._isgroup:
             if offset != 0:
                 raise ValueError(f"Cannot reference within groups before incrementing! ({offset} from {self._name}, which is currently undefined)")
             return self._name
         
         val = self._id + offset
         name = self._name + str(val)
-        if val < 1:
-            raise ValueError(f"Block {name} does not exist!")
-        else:
-            return name
+        return name
     
     def increment(self, num=1):
-        self._id += num
+        if self._id == None:
+            if self._isgroup == False:
+                raise ValueError(f"Cannot increment a name ({self._name}) that has already been used as an individual block!")
+            self._isgroup = True
+            self.id = num
+        else:
+            self._id += num
 
 class ParseData:
     def __init__(self, type, data):
@@ -175,27 +181,31 @@ class Parser:
         return answer
 
     def eval_name(self, raw):
+        def format_num(num):
+            return None if num == None or num == "" \
+                else 1 if num == "+" \
+                else -1 if num == "-" \
+                else int(num[-1:] + num[:-1]) if num[-1:] in "+-" \
+                else int(num)
+        
         if raw is None:
             return
-        data = re.search(r"^(\d*(?=\+))?(\+?)(.*?)(\d*?)([-+]\d*)?$", raw)
-        incr = 0 if data.group(1) == None and data.group(2) == "" \
-                else 1 if data.group(1) == "" and data.group(2) == "+" \
-                else int(data.group(1))
-        id = data.group(4)
-        name = data.group(3)
-        delta = 0 if data.group(5) == None \
-                else 1 if data.group(5) == "+" \
-                else -1 if data.group(5) == "-" \
-                else int(data.group(5))
+        data = re.search(r"^(\d*[\-\+])?(.*?)(\d*?)([-+]\d*)?$", raw)
+        incr = format_num(data.group(1))
+        name = data.group(2)
+        id = data.group(3)
+        delta = format_num(data.group(4))
+        delta = 0 if delta == None else delta
 
         if id != "":
-            if data.group(2) != "" or data.group(5) != None:
+            if data.group(1) != None or data.group(4) != None:
                 raise ValueError(f"Numbers at the end name of {data.group(0)} is not understood alongsied group-scope modifiers")
             return name + id
         if name not in self.groups:
             self.groups[name] = GroupName(name)
 
-        self.groups[name].increment(incr)
+        if incr != None:
+            self.groups[name].increment(incr)
         return self.groups[name].get_name(delta)
 
     def final(self):
