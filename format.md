@@ -78,6 +78,10 @@ Are invalid and undefined uses, because you reference name2 explicitly and then 
 
 This formatting means that it is invalid and unreliable to begin a name with a +, end it with +- (optional numbers afterwards), or end it with numbers if you do not specifically intend to invoke group behavior with that particular name.
 
+#### Reserved Names:
+
+`next`, `prev`, and `latest` are reserved as names for special behavior. `latest` will return the most recently used block, group or not, as it was evaluated and interpreted. `next` and `prev` return the group block +1 or -1 respectively from whatever `latest` is, and updates latest to now be whatever it evaluated to.
+
 ## Raw Data Insertion
 
 `$(data:key)`

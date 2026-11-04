@@ -95,15 +95,15 @@ class Coord:
 class GroupName:
     def __init__(self, name):
         self._name = name
-        self._id = None
+        self._id = 0
         self._isgroup = None
 
     def get_name(self, offset):
         if self._isgroup == None:
             self._isgroup = False
         if not self._isgroup:
-            if offset != 0:
-                raise ValueError(f"Cannot reference within groups before incrementing! ({offset} from {self._name}, which is currently undefined)")
+            #if offset != 0:
+            #    raise ValueError(f"Cannot reference within groups before incrementing! ({offset} from {self._name}, which is currently undefined)")
             return self._name
         
         val = self._id + offset
@@ -111,13 +111,11 @@ class GroupName:
         return name
     
     def increment(self, num=1):
-        if self._id == None:
+        if self._id == 0:
             if self._isgroup == False:
                 raise ValueError(f"Cannot increment a name ({self._name}) that has already been used as an individual block!")
             self._isgroup = True
-            self.id = num
-        else:
-            self._id += num
+        self._id += num
 
 class ParseData:
     def __init__(self, type, data):
@@ -141,6 +139,8 @@ class Parser:
 
         self.groups = {}
         self.aliases = {}
+
+        self._latest_name = None
 
     def new_line(self):
         self.lines.append(self.parsing)
@@ -190,6 +190,26 @@ class Parser:
         
         if raw is None:
             return
+
+        if raw == "latest":
+            return self._latest_name
+
+        change = lambda name, diff: name.group(1) + str(int(name.group(2)) + diff)
+        if raw == "next" or raw == "prev":
+            if self._latest_name == None:
+                raise ValueError(f"{raw} is not defined when no group has been used yet!")
+            latest = re.search(r"^(.*?)(\d*?)$", self._latest_name)
+            if not self.groups[latest.group(1)]._isgroup:
+                raise ValueError(f"{raw} is not defined when the last name used is not part of a group!")
+            if raw == "next":
+                evaluated = change(latest, 1)
+                self._latest_name = evaluated
+                return evaluated
+            elif raw == "prev":
+                evaluated = change(latest, -1)
+                self._latest_name = evaluated
+                return evaluated
+            
         data = re.search(r"^(\d*[\-\+])?(.*?)(\d*?)([-+]\d*)?$", raw)
         incr = format_num(data.group(1))
         name = data.group(2)
@@ -197,16 +217,26 @@ class Parser:
         delta = format_num(data.group(4))
         delta = 0 if delta == None else delta
 
+        if name == "next" or name == "prev":
+            raise ValueError(f"Name {name} is reserved for special behavior and cannot be used as its own group name!")
+
+        if name not in self.groups:
+            self.groups[name] = GroupName(name)
+        
         if id != "":
             if data.group(1) != None or data.group(4) != None:
                 raise ValueError(f"Numbers at the end name of {data.group(0)} is not understood alongsied group-scope modifiers")
-            return name + id
-        if name not in self.groups:
-            self.groups[name] = GroupName(name)
+            self.groups[name]._isgroup = True
+            
+            evaluated = name + id
+            self._latest_name = evaluated
+            return evaluated
 
         if incr != None:
             self.groups[name].increment(incr)
-        return self.groups[name].get_name(delta)
+        evaluated = self.groups[name].get_name(delta)
+        self._latest_name = evaluated
+        return evaluated
 
     def final(self):
         final = []
