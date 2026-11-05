@@ -1,3 +1,5 @@
+import re
+
 class Coord:
     def __init__(self, x, y, z):
         self.update(x, y, z)
@@ -94,12 +96,24 @@ class GroupName:
     def __init__(self, name):
         self._name = name
         self._id = 0
-    
+        self._isgroup = None
+
     def get_name(self, offset):
-        return self._name + str(self._id + offset)
+        if self._isgroup == None:
+            self._isgroup = False
+        if not self._isgroup:
+            return self._name
+
+        val = self._id + offset
+        name = self._name + str(val)
+        return name
     
-    def increment(self):
-        self._id += 1
+    def increment(self, num=1):
+        if self._id == 0:
+            if self._isgroup == False:
+                raise ValueError(f"Cannot increment a name ({self._name}) that has already been used as an individual block!")
+            self._isgroup = True
+        self._id += num
 
 class ParseData:
     def __init__(self, type, data):
@@ -121,8 +135,10 @@ class Parser:
                 for key, value in new.data.items():
                     self.raw_data[key] = value
 
-        self.n_groups = {}
+        self.groups = {}
         self.aliases = {}
+
+        self._latest_name = None
 
     def new_line(self):
         self.lines.append(self.parsing)
@@ -135,16 +151,16 @@ class Parser:
         self.parsing.append(self.raw_data[name])
 
     def add_alias(self, original, alias):
-        self.coordinates[self.process_n(alias)] = self.coordinates[self.process_n(original)]
+        self.coordinates[self.eval_name(alias)] = self.coordinates[self.eval_name(original)]
 
     def add_relative_offset(self, name1, name2):
-        self.parsing.append(Action("pos", self.process_n(name1), self.process_n(name2)))
+        self.parsing.append(Action("pos", self.eval_name(name1), self.eval_name(name2)))
 
     def add_relative_direction(self, name1, name2):
-        self.parsing.append(Action("dir", self.process_n(name1), self.process_n(name2)))
+        self.parsing.append(Action("dir", self.eval_name(name1), self.eval_name(name2)))
 
     def update_coord(self, name, coordinates):
-        name = self.process_n(name)
+        name = self.eval_name(name)
         if name not in self.coordinates:
             self.coordinates[name] = Coord(coordinates[0], coordinates[1], coordinates[2])
         else:
@@ -162,41 +178,63 @@ class Parser:
             answer = self.coordinates[action.name1].direction(self.coordinates[action.name2])
         return answer
 
-    def process_n(self, name):
-        if not name:
-            return
-        def parse_n(name):
-            raw_name, is_n, incr, delta_n = "", False, 0, 0
-
-            pos_of_n = name.rfind("_n")
-            if pos_of_n != len(name) - 2 and name[pos_of_n + 2] not in "+-":
-                return name, is_n, incr, delta_n
-            
-            is_n = True
-            if name[0] == "+":
-                amt = name.rfind("+")
-                raw_name = name[amt + 1:pos_of_n]
-                incr = amt + 1
-            else:
-                raw_name = name[:pos_of_n]
-            
-            delta_str = name[pos_of_n + 2:]
-            if len(delta_str) >= 1:
-                if delta_str[0] == "+":
-                    delta_n = int(delta_str[1:])
-                else:
-                    delta_n = int(delta_str)
-
-            return raw_name, is_n, incr, delta_n
+    def eval_name(self, raw):
+        def format_num(num):
+            return None if num == None or num == "" \
+                else 1 if num == "+" \
+                else -1 if num == "-" \
+                else int(num[-1:] + num[:-1]) if num[-1:] in "+-" \
+                else int(num)
         
-        raw_name, is_n, incr, delta_n = parse_n(name)
-        result_name = raw_name
-        if is_n:
-            if raw_name not in self.n_groups:
-                self.n_groups[raw_name] = 0
-            self.n_groups[raw_name] += incr
-            result_name = raw_name + str(self.n_groups[raw_name] + delta_n)
-        return result_name
+        if raw is None:
+            return
+
+        if raw == "latest":
+            return self._latest_name
+
+        change = lambda name, diff: name.group(1) + str(int(name.group(2)) + diff)
+        if raw == "next" or raw == "prev":
+            if self._latest_name == None:
+                raise ValueError(f"{raw} is not defined when no group has been used yet!")
+            latest = re.search(r"^(.*?)(\d*?)$", self._latest_name)
+            if not self.groups[latest.group(1)]._isgroup:
+                raise ValueError(f"{raw} is not defined when the last name used is not part of a group!")
+            if raw == "next":
+                evaluated = change(latest, 1)
+                self._latest_name = evaluated
+                return evaluated
+            elif raw == "prev":
+                evaluated = change(latest, -1)
+                self._latest_name = evaluated
+                return evaluated
+            
+        data = re.search(r"^(\d*[\-\+])?(.*?)(\d*?)([-+]\d*)?$", raw)
+        incr = format_num(data.group(1))
+        name = data.group(2)
+        id = data.group(3)
+        delta = format_num(data.group(4))
+        delta = 0 if delta == None else delta
+
+        if name == "next" or name == "prev":
+            raise ValueError(f"Name {name} is reserved for special behavior and cannot be used as its own group name!")
+
+        if name not in self.groups:
+            self.groups[name] = GroupName(name)
+        
+        if id != "":
+            if data.group(1) != None or data.group(4) != None:
+                raise ValueError(f"Numbers at the end name of {data.group(0)} is not understood alongsied group-scope modifiers")
+            self.groups[name]._isgroup = True
+            
+            evaluated = name + id
+            self._latest_name = evaluated
+            return evaluated
+
+        if incr != None:
+            self.groups[name].increment(incr)
+        evaluated = self.groups[name].get_name(delta)
+        self._latest_name = evaluated
+        return evaluated
 
     def final(self):
         final = []
@@ -220,30 +258,28 @@ class Action:
 
 
 
-def split_by_actions(line):
+def split_by_actions(line, delimeter=("$(",")")):
     """
     Takes a line and splits it up into a list separated with actions
     Thus, every other item in the new list is an action
 
-    It is rudimentary and very much breaks if you attempt to nest them, but that's alright because there exists no nesting functionality yet
+    Supports custom start and end sequences. Default is $(data).
+    Anything should work as long as every occurence of it is only used as an action
+    If for some reason it is not sufficient, a backslash before will ignore it as an action.
     """
+    start, end = re.escape(delimeter[0]), re.escape(delimeter[1])
     split_line = []
-    action_index = 0
-    action_end = 0
-
-    while action_index != -1:
-        action_index = line.find("$(",action_end) # Find next action, or quit
-        if action_index == -1:
-            continue
-
-        # Add the text in between actions before finding the end of the next action
-        # Thus it's going from end of last action to start of next action
-        split_line.append(line[action_end:action_index])
-
-        action_end = line.find(")",action_end) + 1
-
-        split_line.append("$" + line[action_index + 2 : action_end - 1])
-    split_line.append(line[action_end:])
+    working_index = 0
+    for action in re.finditer(f"{start}.*?{end}",line):  # regex to find actions
+        # negative lookbehind for backslash is not used as backslash needs to be removed
+        # later anyways and it's convenient to do so while actions are being read
+        split_line.append(line[working_index:action.start()])
+        if line[action.start() - 1] == "\\":
+            split_line[-1] == split_line[-1][:-1] + action.group()
+        else:
+            split_line.append("$" + action.group()[2:-1])
+        working_index = action.end()
+    split_line.append(line[working_index:])
     return split_line
 
 
@@ -297,33 +333,33 @@ def parse_command(command_lines, parse_data):
 
 def answer_action(action, parser):
     if action[0] == "#":
-        pass
         return
-    elif action[0] == "~":
-        parser.add_raw_data(action[1:])
+    action_data = action.split(":")
+    tag = action_data[0]
+    body = action_data[1]
+    if tag == "data":
+        parser.add_raw_data(body)
         return
-    elif action[0] == "=":
-        names = action[1:].split(",")
+    elif tag == "alias":
+        names = body.split(",")
         parser.add_alias(names[0], names[1])
         return
-    if action[-5:] == "_next":
-        action = f"{action[:-5]}_n:~:{action[:-5]}_n+1"
+    if body[-5:] == "_next":
+        body =  f"{body[:-5]},{body[:-5]}+1"
 
-    # Remaining actions are
-    operations = action.split(":")
+    operations = body.split(",")
     if len(operations) == 1: # Special case of get position from 0 0 0
         parser.add_relative_offset(None, operations[0])
         return
 
     first = operations[0]
-    second = operations[2]
-    type = operations[1]
+    second = operations[1]
 
-    if type == "=": # Assign a coordinate
-        parser.update_coord(first, second.split(","))
-    elif type == "->": # from-to local coordinate difference
+    if tag == "set": # Assign a coordinate
+        parser.update_coord(first, operations[1:])
+    elif tag == "dir": # from-to local coordinate difference
         parser.add_relative_offset(first, second)
-    elif type == "~": # local N/S/E/W/U/D
+    elif tag == "rot": # local N/S/E/W/U/D
         parser.add_relative_direction(first, second)
 
 def get_parse_positions(position_lines):
