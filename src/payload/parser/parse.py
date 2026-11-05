@@ -102,10 +102,8 @@ class GroupName:
         if self._isgroup == None:
             self._isgroup = False
         if not self._isgroup:
-            #if offset != 0:
-            #    raise ValueError(f"Cannot reference within groups before incrementing! ({offset} from {self._name}, which is currently undefined)")
             return self._name
-        
+
         val = self._id + offset
         name = self._name + str(val)
         return name
