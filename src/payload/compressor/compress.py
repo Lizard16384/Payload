@@ -124,9 +124,9 @@ def get_compressed_data(dictionary, compressed, original_input):
     
     compressed_data = base_cmd + "," + literals_cmd + ',rules:"' + rules + '",output:"' + output + '"'
 
-    compressed_length = len(rules) + len(output)
+    compressed_length = len(compressed_data)
     input_length = len(original_input)
-    ratio = compressed_length / input_length if input_length > 0 else float('inf')
+    ratio = compressed_length / input_length
 
     print(f"Final compression: {ratio:.4f} ({compressed_length} compressed / {input_length} original)")
     print("Verifying integrity of command.")
