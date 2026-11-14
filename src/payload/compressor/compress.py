@@ -551,8 +551,9 @@ def get_compressed_data(literals, rules, output, original_input, charset):
 
     literals_definition = []
     for char in literals:
-        if char in "-+= `~!@#$%^&*()[]{}|;:,.<>/?" or char in "0123456789":  # strings with quotes that cannot be omitted in creating an SNBT value
-                                                                             # additionally, numbers being numbers instead of strings messes with text resolution interpretation, so they have to be strings as well
+        if char in "-+= `~!@#$%^&*()[]{}|;:,.<>/?" or char in "0123456789" or ord(char) > 127:  # strings with quotes that cannot be omitted in creating an SNBT value
+            # additionally, numbers being numbers instead of strings messes with text resolution interpretation, so they have to be strings as well
+            # then anything that's not ascii should also be given quotes
             value = f'"{char}"'
         # the rest have to be escaped properly to fit how it is used in the compressor command
         elif char == '"':
