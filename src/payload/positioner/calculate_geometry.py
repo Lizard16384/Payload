@@ -146,7 +146,7 @@ def calculate_extras(requirements, start):
 
     graph = BlockGraph()
     graph.model = model
-    init = model.new_bool_var("Start")
+    init = model.new_bool_var(start)
     add_all_neighbors(graph, data)
     graph.set_start(start)
     graph.assign_colors(graph._start, init)
@@ -172,10 +172,11 @@ def calculate_extras(requirements, start):
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print("PASSED")
         print(f"Extra blocks inserted: {solver.value(extras)}")
-        for item in graph._extras:
-            if solver.value(item) == 1:
+        for item in graph._extras:  # all the possible extras that might be inserted at intersections
+            if solver.value(item) == 1:  # extras that were selected to be added
                 for changed in graph._blocks[item.name.removesuffix('_extra')]._inbound:
-                    print(f"{changed._name} destination now {item.name}")
+                    if solver.value(changed._color) == solver.value(graph._blocks[item.name.removesuffix('_extra')]._color):
+                        print(f"{changed._name} to {item.name.removesuffix('_extra')} now goes to {item.name}")
 
     else:
         print("FAILED")
