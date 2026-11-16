@@ -1,11 +1,13 @@
 """
 Solve for where extra blocks need to be inserted in order to make an arrangement
 of those blocks in a gridspace even possible. The idea behind the limitations
-is that it is not possible for certain blocks to be next to each other. In a
-chess board, by definition, two black tiles are never next to each other; you
+is that it is not possible for certain blocks to be next to each other. For example,
+In a chess board, by definition, two black tiles are never next to each other; you
 need to insert a white tile to link two black tiles directly. It has to be linked
 directly because that's the only way for a chain command block to send its
-execution to the next chain.
+execution to the next chain, so when there is an amount of chains between two chains that
+need to be linked such that they cannot be placed next to each other, a blank chain
+needs to be inserted for the purpose of routing execution.
 
 The convenient property of this is that whenever a new block has to be inserted
 to make an arrangement possible, any chain that previously needed to go to a
