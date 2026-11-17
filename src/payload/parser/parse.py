@@ -261,25 +261,22 @@ class Action:
 def split_by_actions(line, delimeter=("$(",")")):
     """
     Takes a line and splits it up into a list separated with actions
-    Thus, every other item in the new list is an action
+    Actions are lists and non-actions are strings in the list
 
     Supports custom start and end sequences. Default is $(data).
     Anything should work as long as every occurence of it is only used as an action
-    If for some reason it is not sufficient, a backslash before will ignore it as an action.
+    A backslash before will ignore it as an action and place it as raw text.
     """
     start, end = re.escape(delimeter[0]), re.escape(delimeter[1])
     split_line = []
-    working_index = 0
-    for action in re.finditer(f"{start}.*?{end}",line):  # regex to find actions
-        # negative lookbehind for backslash is not used as backslash needs to be removed
-        # later anyways and it's convenient to do so while actions are being read
-        split_line.append(line[working_index:action.start()])
-        if line[action.start() - 1] == "\\":
-            split_line[-1] == split_line[-1][:-1] + action.group()
-        else:
-            split_line.append("$" + action.group()[2:-1])
-        working_index = action.end()
-    split_line.append(line[working_index:])
+    for match in re.finditer(rf"(.*?)(?<!\\)((?:{start}.*?{end})|$)",line):  # regex to find actions
+        # finds matches grouped by text, then an action. Escaped actions are considered text by the regex.
+        text = match.group(1)
+        action = match.group(2).removeprefix(delimeter[0]).removesuffix(delimeter[1])
+        if len(text) != 0:
+            split_line.append(re.sub(rf"(?:\\)({start}.*?{end})", lambda r: r.group(1)[1:], text))
+        if len(action) != 0:
+            split_line.append(action.split(":",1))
     return split_line
 
 
@@ -320,23 +317,22 @@ def parse_command(command_lines, parse_data):
 
         split_line = split_by_actions(line)
 
-        for string in split_line:  # Process actions
-            if len(string) == 0:
-                continue
-            if string[0] == "$":
-                answer_action(string[1:], parser)
+        i = 0
+        while i < len(split_line):  # Process actions
+            item = split_line[i]
+            i += 1
+            if type(item) == list:
+                tag, body = item[0], item[1]
+                if tag[0] == "#":
+                    continue
+                answer_action(tag, body, parser)
             else:
-                parser.add_string(string)
+                parser.add_string(item)
         parser.new_line()
 
     return parser.final()
 
-def answer_action(action, parser):
-    if action[0] == "#":
-        return
-    action_data = action.split(":")
-    tag = action_data[0]
-    body = action_data[1]
+def answer_action(tag, body, parser):
     if tag == "data":
         parser.add_raw_data(body)
         return
