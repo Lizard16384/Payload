@@ -325,7 +325,15 @@ def parse_command(command_lines, parse_data):
                 tag, body = item[0], item[1]
                 if tag[0] == "#":
                     continue
-                answer_action(tag, body, parser)
+                if tag == "add_data":  # consume the next item.
+                    if item is split_line[-1]:
+                        raise ValueError(f"No text provided on line after data action ({tag}:{body})!")
+                    if type(split_line[i]) == list:
+                        raise ValueError(f"Action ({split_line[i][0]}:{split_line[i][1]}) not understood after adding data ({tag}:{body})!")
+                    parser.raw_data[body] = split_line[i]
+                    i += 1
+                else:
+                    answer_action(tag, body, parser)
             else:
                 parser.add_string(item)
         parser.new_line()

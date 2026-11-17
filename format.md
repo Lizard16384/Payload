@@ -86,7 +86,13 @@ This formatting means that it is invalid and unreliable to begin a name with a +
 
 `$(data:key)`
 
-Inserts raw external data given by a key in a dictionary of provided values.
+* Inserts raw external data given by a key in a dictionary of provided values.
+
+`$(add_data:key)some_text`
+
+* Consumes some_text until the end of the line or until the next action to become the value of key in the parser's data.
+* Useful for inline assignment of data to keep stuff in one place.
+* Currently does not have a way to assign data spread across multiple lines.
 
 ## Comments
 
