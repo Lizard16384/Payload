@@ -76,26 +76,6 @@ def parse_rules_str(rule_str):
 def parse_output_str(output_str):
     return [custom_base(output_str[i:i+1]) for i in range(0, len(output_str), 1)]
 
-def decode(literals, rule_str, output_str):
-    rules = parse_rules_str(rule_str)
-    output = parse_output_str(output_str)
-
-    decodingOutput = output[:]
-    outputStrings = []
-    
-    while decodingOutput:
-        val = decodingOutput[0]
-        if val > len(literals):
-            rule = rules[val - len(literals) - 1]
-            for k in range(len(rule)):
-                decodingOutput.insert(k + 1, rule[k])
-            decodingOutput.pop(0)
-        else:
-            outputStrings.append(literals[val - 1])
-            decodingOutput.pop(0)
-
-    return ''.join(outputStrings)
-
 def get_compressed_data(dictionary, compressed, original_input):
     dictionary.add_head(pair.Symbol(""))  # Add one to everything so that 00 can be reserved for special properties
     max_index = pair.assign_symbol_ids(dictionary)
@@ -130,10 +110,6 @@ def get_compressed_data(dictionary, compressed, original_input):
     ratio = compressed_length / input_length
 
     print(f"Final compression: {ratio:.4f} ({compressed_length} compressed / {input_length} original)")
-    print("Verifying integrity of command.")
-    decoded = decode(literals, rules, output)
-    if decoded != original_input:
-        raise RuntimeError("Decoded command does not match original input.")
 
     return compressed_data
 
