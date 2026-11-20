@@ -45,7 +45,7 @@ def return_data():
     conditionals = [["gamerule","setup1","destroy_backup"]]
 
     # Define the area to work with
-    size = {"x":5,"y":5,"z":5}
+    size = {"x":4,"y":4,"z":4}
 
     fixed_positions = {"aio":[2,0,2]}
 
