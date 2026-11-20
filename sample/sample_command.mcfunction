@@ -1,4 +1,4 @@
-summon falling_block ~ ~.8 ~ {BlockState:{Name:redstone_block},Passengers:[{id:falling_block,BlockState:{Name:activator_rail}},
+summon falling_block ~ ~.8 ~ {BlockState:{id:redstone_block},Passengers:[{id:falling_block,BlockState:{id:activator_rail}},
 {id:command_block_minecart,Command:"setblock ~ ~-2 ~ repeating_command_block{auto:1,Command:'fill ~ ~ ~ ~ ~2 ~ air'}"},
 
 {id:command_block_minecart,Command:"say Sample all in one command demonstrating Payload tools"},
