@@ -33,7 +33,11 @@ def custom_base(val, commons={}):
     elif type(val) == str:
         return linear_remap(ord(val), True)
 
-def dict_str(dictionary):
+def to_str(dictionary, compressed, max_value):
+    def new_len(new, prev):
+        prev = len(new)
+        return custom_base(0) + custom_base(len(new))
+
     prev_length = 0
     literals = []
 
@@ -45,43 +49,44 @@ def dict_str(dictionary):
         if type(new) == str:
             literals.append(symbol._definition)
         else:
-            if len(new) > prev_length:
-                string += custom_base(0) + custom_base(len(new))
-                prev_length = len(new)
+            if len(new) != prev_length:
+                string += new_len(new, prev_length)
             for num in new:
                 string += custom_base(num._index)
+
+    # Add output to the end of the rules in chunks that don't exceed max nbt resolution limit
+    max_resolutions = 60246
+    current_resolved = 0
+    current_string = ""
+    for symbol in compressed:
+        new_amount = nbt_resolutions(symbol)
+        if new_amount > max_resolutions:
+            raise ValueError("Single output chunk requires more than the max limit of nbt resolutions! This is not accounted for yet.")
+        if current_resolved + new_amount > max_resolutions or len(current_string) + 1 > max_value:
+            if len(current_string) != prev_length:
+                string += new_len(current_string, prev_length)
+            string += current_string
+            current_resolved = 0
+            current_string = ""
+        current_resolved += new_amount
+        current_string += custom_base(symbol._index)
+    if len(current_string) != prev_length:
+        string += new_len(current_string, prev_length)
+    string += current_string
+    current_string = ""
     return literals, string
 
-def output_str(linked_list):
-    string = ""
-    for symbol in linked_list:
-        string += custom_base(symbol._index)
-    return string
-
-def parse_rules_str(rule_str):
-    rules = []
-    i = 0
-    length = 0
-    while i < len(rule_str):
-        if(custom_base(rule_str[i:i+1]) == 0):
-            length = custom_base(rule_str[i+1:i+2])
-            i += 2
-        rule = []
-        for _ in range(length):
-            rule.append(custom_base(rule_str[i:i+1]))
-            i += 1
-        rules.append(rule)
-    return rules
-
-def parse_output_str(output_str):
-    return [custom_base(output_str[i:i+1]) for i in range(0, len(output_str), 1)]
+def nbt_resolutions(rule):
+    if type(rule._definition) == str:
+        return 1
+    else:
+        return 1 + sum([nbt_resolutions(item) for item in rule._definition])
 
 def get_compressed_data(dictionary, compressed, original_input):
     dictionary.add_head(pair.Symbol(""))  # Add one to everything so that 00 can be reserved for special properties
     max_index = pair.assign_symbol_ids(dictionary)
     
-    literals, rules = dict_str(dictionary)
-    output = output_str(compressed)
+    literals, rules = to_str(dictionary, compressed, max_index)
 
     base_cmd = f'base:"{"".join([chr(linear_remap(i, False)) for i in range(max_index + 1)])} "'  # Extra (space) character needed to allow substring indeces 0 to 1 always valid in /data
 
@@ -103,7 +108,7 @@ def get_compressed_data(dictionary, compressed, original_input):
         literals_definition.append(value)
     literals_cmd = "literals:[\"\"," + ','.join(literals_definition) + "]"
     
-    compressed_data = base_cmd + "," + literals_cmd + ',rules:"' + rules + '",output:"' + output + '"'
+    compressed_data = base_cmd + "," + literals_cmd + ',rules:"' + rules + '"' + ',"working":[],"result":[]'  # Not too expensive to clear out previous data that may cause issues if storage didn't get cleared
 
     compressed_length = len(compressed_data)
     input_length = len(original_input)
@@ -111,7 +116,7 @@ def get_compressed_data(dictionary, compressed, original_input):
 
     print(f"Final compression: {ratio:.4f} ({compressed_length} compressed / {input_length} original)")
 
-    return compressed_data
+    return compressed_data, str(max_index + 1)
 
 def compile_command(input_str):
     USABLE_ASCII = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-+= `~!@#$%^&*()[]{}|;:,.<>/?" # base-92: excludes ' " \ to avoid issues with minecraft /enchant handling.
@@ -120,7 +125,7 @@ def compile_command(input_str):
     dictionary, compressed = pair.re_pair(input_str)
 
     raw_data = {"storage":"compressor","scoreboard":"compressor"}
-    raw_data["snbt"] = get_compressed_data(dictionary, compressed, input_str)
+    raw_data["snbt"], raw_data["output_start"] = get_compressed_data(dictionary, compressed, input_str)
 
     print("Command compressed. Parsing into compressor command...")
 
