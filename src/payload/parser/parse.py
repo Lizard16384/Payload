@@ -1,5 +1,7 @@
 import re
 
+from payload import finish
+
 class Coord:
     def __init__(self, x, y, z):
         self.update(x, y, z)
@@ -283,40 +285,8 @@ def split_by_actions(line, delimeter=("$(",")")):
 
 def parse_command(command_lines, parse_data):
     parser = Parser(parse_data)
-    block_comment = False
     for line in command_lines:
-        comment_type = ""
-        if len(line) == 0:
-            continue
-        if line[0] == "#" or line[0:2] == "//":
-            continue
-        if not block_comment:
-            if line[0:4] == '"""':
-                block_comment = True
-                comment_type = '"""'
-                continue
-            if line[0:4] == "'''":
-                block_comment = True
-                comment_type = "'''"
-                continue
-            if line[0:3] == "/*":
-                block_comment = True
-                comment_type = "/*"
-                continue
-        if block_comment:
-            if line[0:4] == '"""':
-                block_comment = False
-                comment_type = ""
-            if line[0:4] == "'''":
-                block_comment = False
-                comment_type = ""
-            if line[0:3] == "*/":
-                block_comment = False
-                comment_type = ""
-            continue
-
         split_line = split_by_actions(line)
-
         i = 0
         while i < len(split_line):  # Process actions
             item = split_line[i]

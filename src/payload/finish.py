@@ -15,9 +15,44 @@ class CommandWireError(Exception):
         super().__init__(f"{self.message} (Length: {self.value})")
 
 def read_file_lines(file_name):
+    """
+    Gets the lines in a file by ignoring comments from multiple styles
+    Single-line: line starts with # or //
+    Multi-line: line starts with three qoutes and is considered comment until
+        another line that starts with three of the same type of quotes
+        Or line starts with /* and defines comment until */
+    Note that comments are currently only defined as starting at the beginning
+    of a line.
+    To create comments that do not start at the beginning of a line and absorb
+    the entire line, use the action format for comments.
+    """
     file = open(file_name)
     file_lines = []
+    comment_type = ""
     for line in file:
+        if len(line) == 0:
+            continue
+        if line[0] == "#" or (len(line) >= 2 and line[0:2] == "//"):
+            continue
+        if comment_type == "":
+            if line[0:3] == '"""':
+                comment_type = '"""'
+                continue
+            if line[0:3] == "'''":
+                comment_type = "'''"
+                continue
+            if line[0:2] == "/*":
+                comment_type = "*/"
+                continue
+        else:
+            if line[0:3] == comment_type:
+                line = line[3:]
+                comment_type = ""
+            elif line[0:2] == comment_type:
+                line = line[2:]
+                comment_type = ""
+            else:
+                continue
         new = line.strip()
         if len(new) > 0 and new[0] != "#":
             file_lines.append(new)
