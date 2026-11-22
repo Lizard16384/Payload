@@ -362,15 +362,10 @@ def answer_action(action, parser):
     elif tag == "rot": # local N/S/E/W/U/D
         parser.add_relative_direction(first, second)
 
-def get_parse_positions(position_lines):
+def get_parse_positions(position_data):
     positions = {}
-    for line in position_lines:
-        if not line:
-            continue
-        line = line.split(":")
-        name = line[0]
-        coords = line[1][1:-1].split(",")
-        positions[name] = Coord(coords[0], coords[1], coords[2])
+    for key, value in position_data.items():
+        positions[key] = Coord(value[0], value[1], value[2])
     return ParseData("positions", positions)
 
 def get_parse_raw_data(data):

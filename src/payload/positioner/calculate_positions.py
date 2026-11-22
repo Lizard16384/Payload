@@ -14,6 +14,8 @@ to attempt to fit the nodes into any shape, or simply having a desired
 location for a node.
 """
 
+import json
+
 from ortools.sat.python import cp_model
 from payload import finish
 
@@ -93,7 +95,7 @@ def get_new_solution(requirements, path):
     print("Previous (or nonexistent) positions no longer satisfy positional requirements. Calculating new positions.")
     new_solution = calculate(requirements)
     print(f"New solution found. Writing to path. ({path})")
-    path.write_text("\n".join(new_solution) + "\n")
+    path.write_text(f"{{\n    {json.dumps(new_solution)[1:-1].replace('], "','],\n    "')}\n}}")
     return new_solution
 
 def calculate(requirements, *path):
@@ -107,22 +109,22 @@ def calculate(requirements, *path):
     size_z = size["z"]
     dims = [size_x, size_y, size_z]
 
-    existing_solution = (finish.read_file_lines(path[0]) if path[0].exists() else None) if path else None
+    def get_json(path):
+        with open(path,"r",encoding="utf-8") as file:
+            return json.load(file)
+    existing_solution = (get_json(path[0]) if path[0].exists() else None) if path else None
 
     if existing_solution is not None:
         old_names = get_all_names(data)
         new_names = []
 
-        for line in existing_solution:
+        for key, value in existing_solution.items():
             axes = set("+-")
-            if line[0:1] == "_" and line[4:5] == "_" and set(line[1:4]).issubset(axes):
+            if key[0:1] == "_" and key[4:5] == "_" and set(key[1:4]).issubset(axes):
                 continue
-            line = line.split(":")
-            name = line[0]
-            coords = line[1][1:-1].split(",")
-            raw_coords = [int(coords[0]) + origin[0], int(coords[1]) + origin[1], int(coords[2]) + origin[2]]
-            fixed_positions[name] = raw_coords
-            new_names.append(name)
+            raw_coords = [value[0] + origin[0], value[1] + origin[1], value[2] + origin[2]]
+            fixed_positions[key] = raw_coords
+            new_names.append(key)
 
             if raw_coords[0] < 0 or raw_coords[0] > dims[0] \
                 or raw_coords[1] < 0 or raw_coords[1] > dims[1] \
@@ -250,18 +252,16 @@ def calculate(requirements, *path):
             print("Values (wrote to file positions.txt):")
             """
             result = {}
-            output_lines = []
+            output_data = {}
             for key, value in positions.items():
                 coord = [key[0:-2],key[-1]]
                 if coord[0] not in result:
                     result[coord[0]] = {}
                 result[coord[0]][coord[1]] = value
             for key, value in result.items():
-                coord = f"{key}:({solver.value(value["x"]) - origin[0]},{solver.value(value["y"]) - origin[1]},{solver.value(value["z"]) - origin[2]})"
-                output_lines.append(coord)
+                output_data[str(key)] = [solver.value(value["x"]) - origin[0], solver.value(value["y"]) - origin[1], solver.value(value["z"]) - origin[2]]
             
-            # write corners in
-            output_lines.append("")
+            # add corners
             for x in [0,dims[0] - 1]:
                 for y in [0,dims[1] - 1]:
                     for z in [0,dims[2] - 1]:
@@ -269,8 +269,7 @@ def calculate(requirements, *path):
                             + ("+" if y else "-") \
                             + ("+" if z else "-")
                         name = f"_{corner}_"
-                        coord = f"{name}:({x - origin[0]},{y - origin[1]},{z - origin[2]})"
-                        output_lines.append(coord)
+                        output_data[name] = [x - origin[0], y - origin[1], z - origin[2]]
 
         else:  # No solution was possible with new requirements
             raise Exception(
@@ -278,7 +277,7 @@ def calculate(requirements, *path):
                 f"Cannot write a new default solution for changed requirements."
             )
 
-        return output_lines
+        return output_data
     else:  # A solution is being tested, not generated
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             if old_names != new_names:  # Solution was valid but mismatched names were found, get a new solution
