@@ -337,30 +337,22 @@ def answer_action(action, parser):
     action_data = action.split(":")
     tag = action_data[0]
     body = action_data[1]
+    operations = body.split(",")
     if tag == "data":
         parser.add_raw_data(body)
         return
     elif tag == "alias":
-        names = body.split(",")
-        parser.add_alias(names[0], names[1])
+        parser.add_alias(operations[0], operations[1])
         return
-    if body[-5:] == "_next":
-        body =  f"{body[:-5]},{body[:-5]}+1"
-
-    operations = body.split(",")
-    if len(operations) == 1: # Special case of get position from 0 0 0
-        parser.add_relative_offset(None, operations[0])
-        return
-
-    first = operations[0]
-    second = operations[1]
-
-    if tag == "set": # Assign a coordinate
-        parser.update_coord(first, operations[1:])
+    elif tag == "set": # Assign a coordinate
+        parser.update_coord(operations[0], operations[1:])
     elif tag == "dir": # from-to local coordinate difference
-        parser.add_relative_offset(first, second)
+        if len(operations) == 1:   # Special case of get position from 0 0 0
+            parser.add_relative_offset(None, operations[0])
+        else:
+            parser.add_relative_offset(operations[0], operations[1])
     elif tag == "rot": # local N/S/E/W/U/D
-        parser.add_relative_direction(first, second)
+        parser.add_relative_direction(operations[0], operations[1])
 
 def get_parse_positions(position_data):
     positions = {}
