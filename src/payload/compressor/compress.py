@@ -51,6 +51,7 @@ def to_str(dictionary, compressed, max_value):
         else:
             if len(new) != prev_length:
                 string += new_len(new, prev_length)
+                prev_length = len(new)
             for num in new:
                 string += custom_base(num._index)
 
