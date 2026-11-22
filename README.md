@@ -13,8 +13,9 @@ While it's possible to just split a long command into multiple commands and have
 ## How to use
 
 Install:
+
 ```bash
-pip install git+https://github.com/Lizard16384/Payload.git@v1.0.0
+pip install command-payload
 ```
 
 > **Note:** Payload is fully self-contained — paste the resulting command and run it, no further setup required. The (minor) consequence: decompression works by having command blocks self-assemble and self-destroy within a fixed working area around the initial command block. This area is known in advance (see diagram below) — just make sure it's not important before pasting. This structure is the heart and soul of payload and generally isn't modified without major overhauls to how it works in minecraft, though other development tools can be safely built alongside Payload as long as they don't touch it (which they shouldn't).
@@ -30,6 +31,7 @@ finish.finish(some_text, ("clipboard","write"))
 ```
 
 finish(final_command, mode, output_file):
+
 - `final_command` — the too-long, but otherwise valid, command you want compressed, can be semi-generated with payload's tools
 - `mode` — `"clipboard"`, `"write"`, or a list of both
 - `output_file` — optional, defaults to `result.txt` if `"write"` is used

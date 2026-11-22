@@ -1,6 +1,6 @@
 [project]
-name = "payload"
-version = "1.0.0"
+name = "command-payload"
+version = "1.1.0"
 license = {text = "MIT"}
 dynamic = ["dependencies"]
 
@@ -15,4 +15,4 @@ dependencies = {file = ["requirements.txt"]}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"*" = ["**/*.txt", "**/*.mcfunction"]
+"*" = ["**/*.json", "**/*.mcfunction"]
